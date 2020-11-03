@@ -5,17 +5,22 @@ ts = TimeSeries(key='RFNKYQY0BFFR03I9')
 
 class Fund:
 
-  def __init__(self, name, div, expr):
-    # name: fund name
-    # div: fund dividend rate
-    # expr: fund expense ratio
-    # if type(name) != str:
-
-    self.name = name
-    self.div = div
-    self.expr = expr
+    def __init__(self, name, div, expr):
+        # name: fund name
+        # div: fund dividend rate
+        # expr: fund expense ratio
+        if type(name) != str:
+            name = str(name)
 
 
+
+        self.name = name
+        self.div = div
+        self.expr = expr
+
+
+
+'''
 # bonds
 print("Bonds\n")
 
@@ -116,3 +121,4 @@ for i in range(np.size(div)):
 div_per = 14.3
 print(div_ratio * div_per)
 print(np.sum(div_ratio) * div_per)
+'''
