@@ -342,7 +342,9 @@ class Stocks:
         self.df.loc[filt_num, col_allocation_str] = round_
 
         # portfolio yield
-        # portfolio_yield = self.df.loc[filt_num, col_allocation_str] * self.df.loc[filt_num, ]
+        self.portfolio_yield = self.df.loc[filt_num, col_allocation_str] \
+            * self.df.loc[filt_num, col_yield_str]
+        self.portfolio_yield = self.portfolio_yield.sum()
 
     def p2f_data(self, column_list):
         for j in range(len(column_list)):
@@ -361,7 +363,10 @@ class Stocks:
     def present(self):
         self.f2p_data(self.col_mod)
         self.f2p_data(self.col_add)
+        self.portfolio_yield = f2p(self.portfolio_yield)
         print(self.df)
+        print("\n===========\t===========\t===========\t===========\t===========\t\n")
+        print("Average Portfolio Yield: ", self.portfolio_yield)
         print("\n===========\t===========\t===========\t===========\t===========\t\n")
         print(self.df.info())
 
