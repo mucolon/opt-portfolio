@@ -382,7 +382,6 @@ if __name__ == "__main__":
     pd.set_option("display.max_columns", 11)
     # get current working directory
     cwd = os.getcwd()
-    # cwd = "/private/var/mobile/Library/Mobile Documents/com~apple~CloudDocs/Documents/GitHub/opt-portfolio"
 
     # ignore list
     path_ignore = cwd + "/data/ignore.csv"
