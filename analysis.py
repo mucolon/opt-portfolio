@@ -403,7 +403,7 @@ if __name__ == "__main__":
     div = Dividends(path_div, columns_div, del_columns_div, ignore_list)
 
     data = [perf.df, div.df]
-    cols = ["Ave Annualized Div Perf", "4Y Avg Yield", "Ave Div Growth"]
+    cols = ["Ave Annualized Div Perf", "2Y Ave Yield", "Ave Div Growth", ]
     # stocks = Stocks(data, ignore_symbols=ignore_list, sort_column=cols[1])
     stocks = Stocks(data, ignore_symbols=ignore_list)
     stocks.present()
