@@ -265,6 +265,13 @@ class Dividends:
         self.df.to_csv(export_path)
 
 
+class Holdings:
+
+    def __init__(self, path):
+        self.path = path
+        self.df = pd.read_csv(path)
+
+
 class Stocks:
 
     def __init__(self, data_list, years=[5, 10, 15, 20, 25],
@@ -402,9 +409,14 @@ if __name__ == "__main__":
     # dividends analysis
     div = Dividends(path_div, columns_div, del_columns_div, ignore_list)
 
+    # holding info
+    path_hold = cwd + "/personal/m1.csv"
+    hold = Holdings(path_hold)
+    print(hold.df)
+
     data = [perf.df, div.df]
     cols = ["Ave Annualized Div Perf", "2Y Ave Yield", "Ave Div Growth", ]
     # stocks = Stocks(data, ignore_symbols=ignore_list, sort_column=cols[1])
     stocks = Stocks(data, ignore_symbols=ignore_list)
-    stocks.present()
-    stocks.export()
+    # stocks.present()
+    # stocks.export()
