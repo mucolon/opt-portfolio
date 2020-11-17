@@ -341,6 +341,8 @@ class Holdings:
         self.ave_yield = sum(allocation * self.df["Yield"])
         # average yoc
         self.ave_yoc = sum(allocation * yoc)
+        # average dividend yield growth
+        self.ave_growth = (self.ave_yoc / self.ave_yield) - 1
 
         # final dataframe
         self.df = self.df[["Allocation", "Shares", "Ave Price", "Cost Basis",
@@ -384,11 +386,13 @@ class Holdings:
         self.portfolio_div_annual = f2dollar(self.portfolio_div_annual)
         self.ave_yield = f2p(self.ave_yield)
         self.ave_yoc = f2p(self.ave_yoc)
+        self.ave_growth = f2p(self.ave_growth)
         print(self.df)
         print("\n===========\t===========\t===========\t===========\t===========\t\n")
         print("Annual Portfolio Dividends: ", self.portfolio_div_annual)
         print("Average Portfolio Yield: ", self.ave_yield)
         print("Average Portfolio YoC: ", self.ave_yoc)
+        print("Average Portfolio Yield Growth: ", self.ave_growth)
         print("\n===========\t===========\t===========\t===========\t===========\t\n")
         # print(self.df.info())
 
@@ -544,7 +548,7 @@ if __name__ == "__main__":
     # stocks = Stocks(data, ignore_symbols=ignore_list, sort_column=cols[1])
     stocks = Stocks(data, ignore_symbols=ignore_list)
     stocks.cleanup()
-    stocks.present()
+    # stocks.present()
     stocks.export()
 
     # holding info
