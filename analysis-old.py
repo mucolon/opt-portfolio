@@ -1,4 +1,4 @@
-# file: analysis.py
+# file: analysis-old.py
 # purpose: rank and compare dividend stocks
 
 import numpy as np
