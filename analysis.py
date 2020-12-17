@@ -1,3 +1,5 @@
+#!/usr/local/bin/python3
+
 # Setup code
 import numpy as np
 import pandas as pd
@@ -78,6 +80,7 @@ def performance_data(path, raw_columns):
     df = pd.DataFrame(np_data, columns=header)
     # set Symbol column as index
     df.set_index("Symbol", inplace=True)
+    df = df.rename_axis(None)
     return df
 
 
@@ -106,6 +109,7 @@ def dividends_data(path, raw_columns):
     df = pd.DataFrame(np_data, columns=header)
     # set Symbol column as index
     df.set_index("Symbol", inplace=True)
+    df = df.rename_axis(None)
     return df
 
 
@@ -118,6 +122,7 @@ def excel_data(path, sheet_names):
                     for i in sheet_names], axis=1)
     df = df.loc[:, ~df.columns.duplicated()]
     df.set_index("Symbol", inplace=True)
+    df = df.rename_axis(None)
     df.replace("-", np.nan, inplace=True)
     return df
 
@@ -138,8 +143,8 @@ class Watchlist:
         self.str_yield = str_
         col_fwd_yield = self.df.columns.get_loc("Yield FWD")
         col_yields = [col_fwd_yield-1, col_fwd_yield]
-        ave_yield = self.df.iloc[:, col_yields].mean(axis=1)
-        self.fwd_yield = 2*ave_yield - self.df.iloc[:, col_fwd_yield-1]
+        port_yield = self.df.iloc[:, col_yields].mean(axis=1)
+        self.fwd_yield = 2*port_yield - self.df.iloc[:, col_fwd_yield-1]
         self.df.insert(col_fwd_yield+1, str_, self.fwd_yield)
         self.col_per = np.append(self.col_per, str_)
 
@@ -153,6 +158,34 @@ class Watchlist:
         fwd_rate = 2*ave_rate - self.df.iloc[:, col_fwd_rate-1]
         self.df.insert(col_fwd_rate+1, str_, fwd_rate)
         self.col_dol = np.append(self.col_dol, str_)
+
+    def ave_div_perf(self, str_):
+        '''Add ave div perf data column
+        '''
+        self.str_ave_perf = str_
+        str_3y_perf = "3Y Perf"
+        str_3y_div_perf = "3Y Div Perf"
+        str_3y_total = "3Y Total Return"
+        str_5y_perf = "5Y Perf"
+        str_5y_div_perf = "5Y Div Perf"
+        str_5y_total = "5Y Total Return"
+        str_10y_perf = "10Y Perf"
+        str_10y_div_perf = "10Y Div Perf"
+        str_10y_total = "10Y Total Return"
+        col_3y_total = self.df.columns.get_loc(str_3y_total)
+        col_5y_total = self.df.columns.get_loc(str_5y_total)
+        col_10y_total = self.df.columns.get_loc(str_10y_total)
+        _3y_div_perf = (self.df[str_3y_total]-self.df[str_3y_perf])/3
+        _5y_div_perf = (self.df[str_5y_total]-self.df[str_5y_perf])/5
+        _10y_div_perf = (self.df[str_10y_total]-self.df[str_10y_perf])/10
+        self.df.insert(col_3y_total+1, str_3y_div_perf, _3y_div_perf)
+        self.df.insert(col_5y_total+1, str_5y_div_perf, _5y_div_perf)
+        self.df.insert(col_10y_total+1, str_10y_div_perf, _10y_div_perf)
+        col_div_perf = [str_3y_div_perf, str_5y_div_perf, str_10y_div_perf]
+        self.ave_perf = self.df.loc[:, col_div_perf].mean(axis=1)
+        self.df.insert(col_10y_total+2, str_, self.ave_perf)
+        self.col_per = np.append(self.col_per, col_div_perf)
+        self.col_per = np.append(self.col_per, str_)
 
     def ave_div_growth(self, str_):
         '''Add ave div growth data column
@@ -465,7 +498,7 @@ class Portfolio(Watchlist):
         self.str_annual_div = str_
         div_annual = self.df[self.str_div_rate]*self.df["Shares"]
         self.df[str_] = div_annual
-        self.portfolio_annual_div = self.df[str_].sum()
+        self.port_annual_div = self.df[str_].sum()
         self.col_dol = np.append(self.col_dol, str_)
 
     def current_allocation(self, str_):
@@ -494,23 +527,23 @@ class Portfolio(Watchlist):
         self.df[str_] = yield_growth
         self.col_per = np.append(self.col_per, str_)
 
-    def averages(self):
+    def calculate_summary(self):
         '''Calculate portfolio average yield, yoc, and yield growth
         '''
-        self.ave_yield = sum(self.df[self.str_cur_allocate] *
-                             self.df[self.str_yield])
-        self.ave_yoc = sum(self.df[self.str_cur_allocate] *
-                           self.df[self.str_yoc])
-        self.ave_yield_growth = sum(self.df[self.str_cur_allocate] *
-                                    self.df[self.str_yield_growth])
+        self.port_yield = sum(self.df[self.str_cur_allocate] *
+                              self.df[self.str_yield])
+        self.port_yoc = sum(self.df[self.str_cur_allocate] *
+                            self.df[self.str_yoc])
+        self.port_yield_growth = sum(self.df[self.str_cur_allocate] *
+                                     self.df[self.str_yield_growth])
 
     def print_summary(self, columns, sort_column, ascending=False):
         '''Print specificed dataframe columns and portfolio summary onto terminal
         '''
-        self.portfolio_annual_div = f2dollar(self.portfolio_annual_div)
-        self.ave_yield = f2p(self.ave_yield)
-        self.ave_yoc = f2p(self.ave_yoc)
-        self.ave_yield_growth = f2p(self.ave_yield_growth)
+        port_annual_div = f2dollar(self.port_annual_div)
+        port_yield = f2p(self.port_yield)
+        port_yoc = f2p(self.port_yoc)
+        port_yield_growth = f2p(self.port_yield_growth)
 
         _ = "="
         i = 16
@@ -522,17 +555,13 @@ class Portfolio(Watchlist):
         df = self.cleanup_data(return_dataframe=True)
         print(df.loc[:, columns])
         print(len(df.index))
-        print("Annual Portfolio Dividends: ", self.portfolio_annual_div)
-        print("Average Portfolio Yield: ", self.ave_yield)
-        print("Average Portfolio YoC: ", self.ave_yoc)
-        print("Average Portfolio Yield Growth: ", self.ave_yield_growth)
+        print("Portfolio Annual Dividends: ", port_annual_div)
+        print("Portfolio Yield: ", port_yield)
+        print("Portfolio YoC: ", port_yoc)
+        print("Portfolio Yield Growth: ", port_yield_growth)
 
 
 if __name__ == "__main__":
-    # pandas options
-    # pd.set_option("display.max_columns", None)
-    # pd.set_option("display.max_rows", None)
-
     # file paths
     cwd = os.getcwd()
     path_ignore = cwd + "/data/ignore.csv"
@@ -540,6 +569,10 @@ if __name__ == "__main__":
     path_portfolio = cwd + "/data/portfolio.txt"
     path_excel = cwd + "/data/Stocks.xlsx"
     path_m1 = cwd + "/personal/m1.csv"
+
+    # system commands
+    os.system("mv -f ~/Downloads/Stocks.xlsx " + path_excel)
+    os.system("mv -f ~/Downloads/m1.csv " + path_m1)
 
     # data constants
     percent_columns_perf = ["5D Perf", "1M Perf", "6M Perf", "YTD Perf", "1Y Perf", "3Y Perf",
@@ -561,27 +594,35 @@ if __name__ == "__main__":
     # data analysis constants
     str_yield = "Yield"
     str_div_rate = "Div Rate"
+    str_div_perf = "Ave Div Perf"
     str_div_growth = "Ave Div Growth"
     str_pe = "P/E"
     str_tar_allocate = "Target Allocation"
-    exceptions = ["HRL", "LOW", "ITW", "BKH"]
-    years = [5, 10, 15, 20]
-    yoc_year = years[-1]
-    str_yoc_year = str(yoc_year) + "Y YoC"
-    export_columns = [str_yield, str_div_growth,
-                      str_yoc_year, str_pe, str_tar_allocate]
     str_annual_div = "Annual Div"
     str_cur_allocate = "Current Allocation"
     str_yoc = "YoC"
     str_yield_growth = "Div Growth"
     str_value = "Value"
+    years = [5, 10, 15, 20]
+    yoc_year = years[-1]
+    str_yoc_year = str(yoc_year) + "Y YoC"
+    export_columns = [str_yield, str_div_perf, str_div_growth,
+                      str_yoc_year, str_pe, str_tar_allocate]
     m1_export_columns = [str_tar_allocate, str_cur_allocate, "Shares", "Ave Price", "Cost Basis",
                          str_value, "Unrealized Gain %", "Annual Div", str_yield, str_yoc, str_yield_growth]
+
+    # pandas options
+    pd.set_option("display.max_columns", len(export_columns))
+    # pd.set_option("display.max_rows", None)
+
+    # exceptions
+    exceptions = ["HRL", "ITW", "ESS"]
 
     # start data analysis to filter stocks to a singular watchlist
     watch = Watchlist(df, percent_columns, dollar_columns, round_columns)
     watch.yield_(str_yield)
     watch.div_rate(str_div_rate)
+    watch.ave_div_perf(str_div_perf)
     watch.ave_div_growth(str_div_growth)
     watch.yoc_years(years)
     watch.pe_ratio(str_pe)
@@ -600,12 +641,12 @@ if __name__ == "__main__":
     port.current_allocation(str_cur_allocate)
     port.yoc(str_yoc)
     port.yield_growth(str_yield_growth)
-    port.averages()
+    port.calculate_summary()
     port.export_csv("portfolio", m1_export_columns, str_yield)
 
     # print data
     # print(port.df.info())
-    # watch.print_terminal(export_columns, str_yield)
-    # port.print_terminal(export_columns, str_yield)
+    watch.print_terminal(export_columns, str_yield)
+    port.print_terminal(export_columns, str_yield)
     # port.print_terminal(export_columns, str_pe, ascending=True)
-    port.print_summary(m1_export_columns, str_value)
+    port.print_summary(m1_export_columns, str_cur_allocate)
