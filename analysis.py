@@ -12,13 +12,13 @@ import scipy.optimize as opt
 def p2f(percent):
     '''Convert string percent to a float number
     '''
-    return float(percent.strip("%"))/100
+    return float(percent.strip("%")) / 100
 
 
 def f2p(float_):
     '''Convert float number to a string percent
     '''
-    return str(round(100*float_, 2))+"%"
+    return str(round(100 * float_, 2)) + "%"
 
 
 def dollar2f(dollar):
@@ -73,7 +73,7 @@ def performance_data(path, raw_columns):
         raw_data = insert_position(0, raw_data, before)
     # length of raw data
     len_data = len(raw_data)
-    raw_rows = int(len_data/raw_columns)
+    raw_rows = int(len_data / raw_columns)
     print(raw_rows, "\n", raw_columns, "\n", raw_data)
     # transform data from vector to spreadsheet-like matrix
     np_data = np.reshape(raw_data, (raw_rows, raw_columns))
@@ -102,8 +102,7 @@ def dividends_data(path, raw_columns):
         raw_data = insert_position(0, raw_data, before)
     # length of raw data
     len_data = len(raw_data)
-    raw_rows = int(len_data/raw_columns)
-    entries = raw_rows - 1
+    raw_rows = int(len_data / raw_columns)
     # transform data from vector to spreadsheet-like matrix
     np_data = np.reshape(raw_data, (raw_rows, raw_columns))
     # identify column names for data
@@ -136,7 +135,7 @@ def print_divider(num_symbol):
     '''
     '''
     _ = "*"
-    _ = str(num_symbol*_)
+    _ = str(num_symbol * _)
     tab = "\t"
     _ = tab + _ + tab + _ + tab + _ + tab + _
     print(_)
@@ -149,6 +148,18 @@ def exp_func(x, a, b, c):
         return [(a * np.exp(b * i) + c) for i in x]
     else:
         return (a * np.exp(b * x) + c)
+
+
+def fit_data(func, xdata, ydata):
+    '''
+    '''
+    popt, pcov = opt.curve_fit(func, xdata, ydata)
+    fit_data = func(xdata, *popt)
+    residuals = func(xdata, *popt) - ydata
+    ss_res = np.sum(residuals**2)
+    ss_tot = np.sum((ydata - np.mean(ydata))**2)
+    r_squared = 1 - (ss_res / ss_tot)
+    return fit_data, popt, r_squared
 
 
 class Watchlist:
@@ -166,10 +177,10 @@ class Watchlist:
         '''
         self.str_yield = str_
         col_fwd_yield = self.df.columns.get_loc("Yield FWD")
-        col_yields = [col_fwd_yield-1, col_fwd_yield]
+        col_yields = [col_fwd_yield - 1, col_fwd_yield]
         port_yield = self.df.iloc[:, col_yields].mean(axis=1)
-        self.fwd_yield = 2*port_yield - self.df.iloc[:, col_fwd_yield-1]
-        self.df.insert(col_fwd_yield+1, str_, self.fwd_yield)
+        self.fwd_yield = 2 * port_yield - self.df.iloc[:, col_fwd_yield - 1]
+        self.df.insert(col_fwd_yield + 1, str_, self.fwd_yield)
         self.col_per = np.append(self.col_per, str_)
 
     def div_rate(self, str_):
@@ -177,10 +188,10 @@ class Watchlist:
         '''
         self.str_div_rate = str_
         col_fwd_rate = self.df.columns.get_loc("Div Rate FWD")
-        col_rates = [col_fwd_rate-1, col_fwd_rate]
+        col_rates = [col_fwd_rate - 1, col_fwd_rate]
         ave_rate = self.df.iloc[:, col_rates].mean(axis=1)
-        fwd_rate = 2*ave_rate - self.df.iloc[:, col_fwd_rate-1]
-        self.df.insert(col_fwd_rate+1, str_, fwd_rate)
+        fwd_rate = 2 * ave_rate - self.df.iloc[:, col_fwd_rate - 1]
+        self.df.insert(col_fwd_rate + 1, str_, fwd_rate)
         self.col_dol = np.append(self.col_dol, str_)
 
     def ave_div_perf(self, str_):
@@ -199,15 +210,15 @@ class Watchlist:
         col_3y_total = self.df.columns.get_loc(str_3y_total)
         col_5y_total = self.df.columns.get_loc(str_5y_total)
         col_10y_total = self.df.columns.get_loc(str_10y_total)
-        _3y_div_perf = (self.df[str_3y_total]-self.df[str_3y_perf])/3
-        _5y_div_perf = (self.df[str_5y_total]-self.df[str_5y_perf])/5
-        _10y_div_perf = (self.df[str_10y_total]-self.df[str_10y_perf])/10
-        self.df.insert(col_3y_total+1, str_3y_div_perf, _3y_div_perf)
-        self.df.insert(col_5y_total+1, str_5y_div_perf, _5y_div_perf)
-        self.df.insert(col_10y_total+1, str_10y_div_perf, _10y_div_perf)
+        _3y_div_perf = (self.df[str_3y_total] - self.df[str_3y_perf]) / 3
+        _5y_div_perf = (self.df[str_5y_total] - self.df[str_5y_perf]) / 5
+        _10y_div_perf = (self.df[str_10y_total] - self.df[str_10y_perf]) / 10
+        self.df.insert(col_3y_total + 1, str_3y_div_perf, _3y_div_perf)
+        self.df.insert(col_5y_total + 1, str_5y_div_perf, _5y_div_perf)
+        self.df.insert(col_10y_total + 1, str_10y_div_perf, _10y_div_perf)
         col_div_perf = [str_3y_div_perf, str_5y_div_perf, str_10y_div_perf]
         self.ave_perf = self.df.loc[:, col_div_perf].mean(axis=1)
-        self.df.insert(col_10y_total+2, str_, self.ave_perf)
+        self.df.insert(col_10y_total + 2, str_, self.ave_perf)
         self.col_per = np.append(self.col_per, col_div_perf)
         self.col_per = np.append(self.col_per, str_)
 
@@ -216,9 +227,9 @@ class Watchlist:
         '''
         self.str_div_growth = str_
         col_5y_growth = self.df.columns.get_loc("Div Growth 5Y")
-        col_growth = [col_5y_growth-1, col_5y_growth]
+        col_growth = [col_5y_growth - 1, col_5y_growth]
         self.ave_growth = self.df.iloc[:, col_growth].mean(axis=1)
-        self.df.insert(col_5y_growth+1, str_, self.ave_growth)
+        self.df.insert(col_5y_growth + 1, str_, self.ave_growth)
         self.col_per = np.append(self.col_per, str_)
 
     def yoc_years(self, years):
@@ -227,9 +238,9 @@ class Watchlist:
         col_ave_grow = self.df.columns.get_loc(self.str_div_growth)
         _ = 1
         for i in years:
-            yoc = self.fwd_yield*((1+self.ave_growth)**i)
+            yoc = self.fwd_yield * ((1 + self.ave_growth)**i)
             str_ = str(i) + "Y YoC"
-            self.df.insert(col_ave_grow+_, str_, yoc)
+            self.df.insert(col_ave_grow + _, str_, yoc)
             self.col_per = np.append(self.col_per, str_)
             _ += 1
 
@@ -238,12 +249,12 @@ class Watchlist:
         '''
         self.str_pe = str_
         col_fwd_pe = self.df.columns.get_loc("P/E FWD")
-        col_pes = [col_fwd_pe-1, col_fwd_pe]
+        col_pes = [col_fwd_pe - 1, col_fwd_pe]
         ave_pe = self.df.iloc[:, col_pes].mean(axis=1)
         filt = (ave_pe == self.df.iloc[:, col_fwd_pe])
-        fwd_pe = 2*ave_pe - self.df.iloc[:, col_fwd_pe-1]
+        fwd_pe = 2 * ave_pe - self.df.iloc[:, col_fwd_pe - 1]
         fwd_pe[filt] = ave_pe
-        self.df.insert(col_fwd_pe+1, str_, fwd_pe)
+        self.df.insert(col_fwd_pe + 1, str_, fwd_pe)
         self.col_round = np.append(self.col_round, str_)
 
     def filter_poor(self, str_, exceptions=None):
@@ -264,13 +275,13 @@ class Watchlist:
         str_5y_total = "5Y Total Return"
         str_10y_perf = "10Y Perf"
         str_10y_total = "10Y Total Return"
-        threshold_yoc = self.df.loc["SCHD", str_yoc]*1.1
-        threshold_yield = self.df.loc["SCHD", str_yield]*1.1
+        threshold_yoc = self.df.loc["SCHD", str_yoc] * 1.1
+        threshold_yield = self.df.loc["SCHD", str_yield] * 1.1
         filt = (((self.df[str_yield] < threshold_yield) & (self.df[str_yoc] < threshold_yoc)) |
                 (self.df[str_years_growth].str[0] == "0") | (self.df[str_payout] > 0.95) |
-                (np.isnan(self.df[str_yield])) | (np.isnan(self.df[str_yoc])) |
-                (np.isnan(self.df[str_3y_div_growth])) | (self.df[str_3y_div_growth] < 0) |
-                (self.df[str_5y_div_growth] < 0) | (self.df[str_div_growth] < 0.035) |
+                (np.isnan(self.df[str_yield])) | (np.isnan(self.df[str_3y_div_growth])) |
+                (self.df[str_3y_div_growth] < 0) | (self.df[str_5y_div_growth] < 0) |
+                (self.df[str_div_growth] < 0.035) |
                 (self.df[str_3y_perf] < 0) | (self.df[str_3y_total] < 0) |
                 (self.df[str_5y_perf] < 0) | (self.df[str_5y_total] < 0) |
                 (self.df[str_10y_perf] < 0) | (self.df[str_10y_total] < 0))
@@ -311,15 +322,18 @@ class Watchlist:
             self.script_override = [
                 i for i in index_portfolio if i in remove_script]
             # remove symbols if in exceptions list
-            remove_script = [i for i in remove_script if i not in exceptions]
+            remove_edited = [i for i in remove_script if i not in exceptions]
             # remove symbols if not in stock spreadsheet
-            remove_script = [i for i in remove_script if i in entries]
-            self.df.drop(remove_script, inplace=True)
+            remove_edited = [i for i in remove_edited if i in entries]
+            self.df.drop(remove_edited, inplace=True)
             script_df = pd.concat([pd.DataFrame([i], columns=[col_script])
-                                   for i in remove_script], ignore_index=True)
+                                   for i in remove_edited], ignore_index=True)
             ignore_df.drop(columns=col_script, inplace=True)
             ignore_df = pd.concat([script_df, ignore_df], axis=1)
         ignore_df.to_csv(path_ignore, index=False)
+        # remove market symbol from symbols that didn't pass filter_poor() but are part of dataframe
+        self.remove_script = [i for i in remove_script
+                              if i not in index_market]
         self.index_market = index_market
         self.index_portfolio = index_portfolio
 
@@ -327,15 +341,26 @@ class Watchlist:
         '''Update watchlist text file based on symbols that passed filter_poor() method
         '''
         entries = self.df.index.tolist()
+        # remove symbols that have been qualitatively removed
         entries = [i for i in entries if i not in self.remove_qual]
-        entries = sorted(entries)
+        # remove symbols that didn't pass filter_poor()
+        entries = [i for i in entries if i not in self.remove_script]
+        # entries = sorted(entries)
         with open(path_list, "w") as f:
-            f.write(','.join(entries))
+            f.write(',\n'.join(entries))
 
-    def sort(self, column, ascending=False):
-        '''Sort dataframe based on specified column
+    def sort(self, column, ascending=False, return_dataframe=False, input_dataframe=None):
+        '''Sort dataframe based on specified column. If return_dataframe is True, a new modified dataframe will be returned. If input_dataframe is not None, input_dataframe will be used to modify
         '''
-        self.df.sort_values(column, inplace=True, ascending=ascending)
+        if return_dataframe:
+            if input_dataframe is None:
+                new_df = self.df.copy()
+            else:
+                new_df = input_dataframe
+            new_df.sort_values(column, inplace=True, ascending=ascending)
+            return new_df
+        else:
+            self.df.sort_values(column, inplace=True, ascending=ascending)
 
     def allocate(self, column, str_):
         '''Allocate portfolio distribution based on input column
@@ -343,7 +368,7 @@ class Watchlist:
         self.str_tar_allocate = str_
         index_portfolio = self.index_portfolio
         sum_ = self.df.loc[index_portfolio, column].sum()
-        self.df[str_] = (1/sum_)*self.df.loc[index_portfolio, column]
+        self.df[str_] = (1 / sum_) * self.df.loc[index_portfolio, column]
         round_ = self.df.loc[index_portfolio, str_].apply(round, args=(2,))
         self.df.loc[index_portfolio, str_] = round_
         self.col_per = np.append(self.col_per, str_)
@@ -510,9 +535,12 @@ class Portfolio(Watchlist):
         '''Update portfolio list based on ignore csv portfolio column
         '''
         list_ = self.index_portfolio + self.index_market
-        list_ = sorted(list_)
+        port = self.sort(str_yield, return_dataframe=True,
+                         input_dataframe=self.df.loc[list_, :])
+        list_port = port.index.tolist()
+        # list_ = sorted(list_)
         with open(path_list, "w") as f:
-            f.write(','.join(list_))
+            f.write(',\n'.join(list_port))
 
     def m1_import(self, path_csv, percent_columns, dollar_columns):
         '''Import M1 csv file for portfolio analysis
@@ -539,7 +567,7 @@ class Portfolio(Watchlist):
         '''Add portfolio annual div rate data column based on shares, calculate total portfolio div rate based on shares
         '''
         self.str_annual_div = str_
-        div_annual = self.df[self.str_div_rate]*self.df["Shares"]
+        div_annual = self.df[self.str_div_rate] * self.df["Shares"]
         self.df[str_] = div_annual
         self.port_annual_div = self.df[str_].sum()
         self.col_dol = np.append(self.col_dol, str_)
@@ -550,7 +578,7 @@ class Portfolio(Watchlist):
         self.str_cur_allocate = str_
         str_value = "Value"
         total_invest = self.df[str_value].sum()
-        allocation = self.df[str_value]/total_invest
+        allocation = self.df[str_value] / total_invest
         self.df[str_] = allocation
         self.col_per = np.append(self.col_per, str_)
 
@@ -558,7 +586,7 @@ class Portfolio(Watchlist):
         '''Add portfolio YoC data column based on cost basis
         '''
         self.str_yoc = str_
-        yoc = self.df[self.str_div_rate]/self.df["Ave Price"]
+        yoc = self.df[self.str_div_rate] / self.df["Ave Price"]
         self.df[str_] = yoc
         self.col_per = np.append(self.col_per, str_)
 
@@ -566,23 +594,22 @@ class Portfolio(Watchlist):
         '''Add portfolio div growth data column
         '''
         self.str_yield_growth = str_
-        yield_growth = (self.df[self.str_yoc]/self.df[self.str_yield]) - 1
+        yield_growth = (self.df[self.str_yoc] / self.df[self.str_yield]) - 1
         self.df[str_] = yield_growth
         self.col_per = np.append(self.col_per, str_)
 
     def calculate_summary(self):
         '''Calculate portfolio average yield, yoc, yield growth, and performance
         '''
-        self.port_yield = sum(self.df[self.str_cur_allocate] *
-                              self.df[self.str_yield])
-        self.port_yoc = sum(self.df[self.str_cur_allocate] *
-                            self.df[self.str_yoc])
-        self.port_yield_growth = sum(self.df[self.str_cur_allocate] *
-                                     self.df[self.str_yield_growth])
+        self.port_yield = sum(
+            self.df[self.str_cur_allocate] * self.df[self.str_yield])
+        self.port_yoc = sum(
+            self.df[self.str_cur_allocate] * self.df[self.str_yoc])
+        self.port_yield_growth = sum(
+            self.df[self.str_cur_allocate] * self.df[self.str_yield_growth])
         self.port_value = self.df["Value"].sum()
         self.port_cost = self.df["Cost Basis"].sum()
-        self.port_perf = (self.port_value /
-                          self.port_cost)-1
+        self.port_perf = (self.port_value / self.port_cost) - 1
 
     def print_summary(self, columns, sort_column, ascending=False, num_symbol=16):
         '''Print specificed dataframe columns and portfolio summary onto terminal
@@ -628,26 +655,7 @@ class Portfolio(Watchlist):
             year_income.append(data_income.loc[filt].sum())
         # list of cumulative sum of monthly income
         cumsum_income = data_income.cumsum()
-        popt, pcov = opt.curve_fit(
-            exp_func, months, cumsum_income)
-        residuals = exp_func(months, *popt) - cumsum_income
-        ss_res = np.sum(residuals**2)
-        ss_tot = np.sum((cumsum_income-np.mean(cumsum_income))**2)
-        r_squared = 1 - (ss_res / ss_tot)
-
-        # print("\n", data_income)
-        # print("\n", year_income)
-        # print("\n", cumsum_income)
-        # print("\n", data_year)
-        # print("\n", data_date.year.tolist())
-        # print("\n", data_date.month)
-        # print("\n", type(months[0]))
-        # print("\n", popt)
-        # print("\n", pcov)
-        # print("\n", r_squared)
-
-        # data_value_str = [f2dollar(i) for i in data_value]
-        # data_income_str = [f2dollar(i) for i in data_income]
+        data_fit, popt, r_squared = fit_data(exp_func, months, cumsum_income)
 
         fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2)
         li_green = "#6BA755"
@@ -656,8 +664,7 @@ class Portfolio(Watchlist):
         ax2.plot(data_date, data_income, ".-")
         ax3.plot(data_year, year_income, ".-")
         ax4.plot(data_date, cumsum_income, ".-", label="Raw")
-        ax4.plot(data_date, exp_func(months, *popt), label="Fit",
-                 color=li_green)
+        ax4.plot(data_date, data_fit, label="Fit", color=li_green)
 
         str_fit_eqn = '\n'.join(("Fit Equation:",
                                  r"%.2f$e^{%.2fx}$%.2f" % (
@@ -667,12 +674,6 @@ class Portfolio(Watchlist):
         anchored_text = AnchoredText(str_fit_eqn, loc=4, frameon=False,
                                      prop=dict(bbox=props))
         ax4.add_artist(anchored_text)
-
-        # xtick_value = ax.get_xticks()
-        # ytick_value = ax.get_yticks()
-        # xtick_value_str = [f2dollar(i, drop_cents=True) for i in xtick_value]
-        # ytick_value_str = [f2dollar(i, drop_cents=True) for i in ytick_value]
-        # ax.set_yticklabels(ytick_value_str)
 
         ax1.set_title("Portfolio Value")
         ax2.set_title("Portfolio Income")
