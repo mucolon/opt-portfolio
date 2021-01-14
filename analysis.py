@@ -142,24 +142,31 @@ def print_divider(num_symbol):
 
 
 def exp_func(x, a, b, c):
+    '''Exponential function with parameters for constants. Function: a*exp(b*x)+c. Input: x can be an int or list
     '''
-    '''
-    if (type(x) != int):
-        return [(a * np.exp(b * i) + c) for i in x]
-    else:
+    try:
+        len(x)
+    except TypeError:
         return (a * np.exp(b * x) + c)
+    return [(a * np.exp(b * i) + c) for i in x]
 
 
-def fit_data(func, xdata, ydata):
+def fit_data(func, xdata, ydata, return_r_squared=False):
     '''
     '''
     popt, pcov = opt.curve_fit(func, xdata, ydata)
     fit_data = func(xdata, *popt)
-    residuals = func(xdata, *popt) - ydata
-    ss_res = np.sum(residuals**2)
-    ss_tot = np.sum((ydata - np.mean(ydata))**2)
-    r_squared = 1 - (ss_res / ss_tot)
-    return fit_data, popt, r_squared
+    fit_data = np.array(fit_data)
+    xdata = np.array(xdata)
+    ydata = np.array(ydata)
+    if return_r_squared is False:
+        residuals = fit_data - ydata
+        ss_res = np.sum(residuals**2)
+        ss_tot = np.sum((ydata - np.mean(ydata))**2)
+        r_squared = 1 - (ss_res / ss_tot)
+        return fit_data, popt, r_squared
+    else:
+        return fit_data, popt
 
 
 class Watchlist:
@@ -655,31 +662,55 @@ class Portfolio(Watchlist):
             year_income.append(data_income.loc[filt].sum())
         # list of cumulative sum of monthly income
         cumsum_income = data_income.cumsum()
-        data_fit, popt, r_squared = fit_data(exp_func, months, cumsum_income)
-
-        fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2)
+        fit_cumsum, popt_cumsum, r2_cumsum = fit_data(exp_func, months,
+                                                      cumsum_income)
+        # model monthly income based on curve fit of cumsum_income
+        future_month0 = months[-1] + 1
+        future_months = np.arange(future_month0, future_month0 + 12)
+        future_months = np.concatenate([months, future_months])
+        future_income = exp_func(future_months, *popt_cumsum)
+        for i in range(future_months[-1], 0, -1):
+            future_income[i] = future_income[i] - future_income[i - 1]
+        future_date = data_date + pd.DateOffset(months=12)
+        future_date = future_date[-12:]
+        future_date = data_date.union(future_date)
+        # curve fit monthly income
+        fit_income, popt_income = fit_data(exp_func, future_months, future_income,
+                                           return_r_squared=True)
+        # initialize graph
+        fig, (ax1, ax2, ax3) = plt.subplots(3, 1)
         li_green = "#6BA755"
         li_grey = "#D7D7D7"
+        # portfolio value plot
         ax1.fill_between(data_date, data_value, color=li_green)
-        ax2.plot(data_date, data_income, ".-")
-        ax3.plot(data_year, year_income, ".-")
-        ax4.plot(data_date, cumsum_income, ".-", label="Raw")
-        ax4.plot(data_date, data_fit, label="Fit", color=li_green)
-
+        ax1.set_title("Portfolio Value")
+        # portfolio monthly income plot
+        ax2.plot(data_date, data_income, ".-", label="Raw")
+        ax2.plot(future_date, future_income, ".-", label="Forcast",
+                 color=li_green)
+        # ax2.plot(future_date, fit_income, ".-", label="Fit", color=li_green)
         str_fit_eqn = '\n'.join(("Fit Equation:",
                                  r"%.2f$e^{%.2fx}$%.2f" % (
-                                     popt[0], popt[1], popt[2]),
-                                 r"$R^2$= %.2f" % (r_squared,)))
+                                     popt_income[0], popt_income[1], popt_income[2])))
         props = dict(boxstyle='round', facecolor="white", edgecolor=li_grey)
         anchored_text = AnchoredText(str_fit_eqn, loc=4, frameon=False,
                                      prop=dict(bbox=props))
-        ax4.add_artist(anchored_text)
-
-        ax1.set_title("Portfolio Value")
-        ax2.set_title("Portfolio Income")
-        ax3.set_title("Yearly Income")
-        ax4.set_title("Cumulative Sum Income")
-        ax4.legend(loc="best")
+        ax2.add_artist(anchored_text)
+        ax2.set_title("Monthly Income")
+        ax2.legend(loc="best")
+        # portfolio cumsum income plot
+        ax3.plot(data_date, cumsum_income, ".-", label="Raw")
+        ax3.plot(data_date, fit_cumsum, label="Fit", color=li_green)
+        str_fit_eqn = '\n'.join(("Fit Equation:",
+                                 r"%.2f$e^{%.2fx}$%.2f" % (
+                                     popt_cumsum[0], popt_cumsum[1], popt_cumsum[2]),
+                                 r"$R^2$= %.2f" % (r2_cumsum,)))
+        props = dict(boxstyle='round', facecolor="white", edgecolor=li_grey)
+        anchored_text = AnchoredText(str_fit_eqn, loc=4, frameon=False,
+                                     prop=dict(bbox=props))
+        ax3.add_artist(anchored_text)
+        ax3.set_title("Cumulative Sum Income")
+        ax3.legend(loc="best")
         plt.show()
 
 
@@ -740,8 +771,7 @@ if __name__ == "__main__":
     # pd.set_option("display.max_rows", None)
 
     # exceptions
-    exceptions = ["HRL", "ITW", "ESS", "ETR", "SNA",
-                  "DLR", "PEG", "FLO"]
+    exceptions = ["HRL", "ITW", "ESS", "ETR", "SNA", "DLR", "FLO"]
 
     # start data analysis to filter stocks to a singular watchlist
     watch = Watchlist(df, percent_columns, dollar_columns, round_columns)

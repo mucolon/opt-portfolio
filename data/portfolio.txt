@@ -1,6 +1,6 @@
-ABBV,
 O,
 STOR,
+ABBV,
 FCPT,
 CTRE,
 PFE,
