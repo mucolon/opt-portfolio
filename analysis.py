@@ -7,6 +7,8 @@ import os
 import matplotlib.pyplot as plt
 from matplotlib.offsetbox import AnchoredText
 import scipy.optimize as opt
+from datetime import datetime
+import pytz
 
 
 def p2f(percent):
@@ -269,7 +271,8 @@ class Watchlist:
         '''
         if exceptions is None:
             exceptions = []
-        str_yoc = str_
+        str_yoc_year = str_
+        self.str_yoc_year = str_yoc_year
         str_yield = self.str_yield
         str_years_growth = "Years of Growth"
         str_payout = "Payout Ratio"
@@ -282,14 +285,14 @@ class Watchlist:
         str_5y_total = "5Y Total Return"
         str_10y_perf = "10Y Perf"
         str_10y_total = "10Y Total Return"
-        threshold_yoc = self.df.loc["SCHD", str_yoc] * 1.1
+        threshold_yoc = self.df.loc["SCHD", str_yoc_year] * 1.1
         threshold_yield = self.df.loc["SCHD", str_yield] * 1.1
-        filt = (((self.df[str_yield] < threshold_yield) & (self.df[str_yoc] < threshold_yoc)) |
+        filt = (((self.df[str_yield] < threshold_yield) & (self.df[str_yoc_year] < threshold_yoc)) |
                 (self.df[str_years_growth].str[0] == "0") | (self.df[str_payout] > 0.95) |
                 (np.isnan(self.df[str_yield])) | (np.isnan(self.df[str_3y_div_growth])) |
                 (self.df[str_3y_div_growth] < 0) | (self.df[str_5y_div_growth] < 0) |
                 (self.df[str_div_growth] < 0.035) |
-                (self.df[str_3y_perf] < 0) | (self.df[str_3y_total] < 0) |
+                (self.df[str_3y_perf] < -0.2) | (self.df[str_3y_total] < -0.03) |
                 (self.df[str_5y_perf] < 0) | (self.df[str_5y_total] < 0) |
                 (self.df[str_10y_perf] < 0) | (self.df[str_10y_total] < 0))
         remove_script = self.df.loc[filt].index.values.tolist()
@@ -343,6 +346,7 @@ class Watchlist:
                               if i not in index_market]
         self.index_market = index_market
         self.index_portfolio = index_portfolio
+        self.entries = self.df.index.tolist()
 
     def update_watchlist(self, path_list):
         '''Update watchlist text file based on symbols that passed filter_poor() method
@@ -516,6 +520,22 @@ class Watchlist:
         export_path = cwd + "/data/" + file_name + ".csv"
         df.loc[:, columns].to_csv(export_path)
 
+    def graph_yield_yoc(self, omit_symbols=None):
+        '''
+        '''
+        if omit_symbols is None:
+            omit_symbols = []
+        fig, ax = plt.subplots()
+        for i in self.entries:
+            if i in omit_symbols:
+                continue
+            ax.plot(self.df.loc[i, self.str_yield],
+                    self.df.loc[i, self.str_yoc_year], ".", label=i)
+        str_title = "Symbol: " + self.str_yoc_year + " vs. Yield"
+        ax.set_title(str_title)
+        ax.legend(loc="best", ncol=3)
+        plt.show()
+
 
 class Portfolio(Watchlist):
     '''Class highlights portfolio performance
@@ -570,14 +590,18 @@ class Portfolio(Watchlist):
         self.p2f_data()
         self.dollar2f_data()
 
-    def annual_div(self, str_):
+    def div_rate(self, str_annual, str_month):
         '''Add portfolio annual div rate data column based on shares, calculate total portfolio div rate based on shares
         '''
-        self.str_annual_div = str_
+        self.str_annual_div = str_annual
+        self.str_month_div = str_month
         div_annual = self.df[self.str_div_rate] * self.df["Shares"]
-        self.df[str_] = div_annual
-        self.port_annual_div = self.df[str_].sum()
-        self.col_dol = np.append(self.col_dol, str_)
+        div_month = div_annual / 12
+        self.df[str_annual] = div_annual
+        self.df[str_month] = div_month
+        self.port_annual_div = self.df[str_annual].sum()
+        self.port_month_div = self.df[str_month].sum()
+        self.col_dol = np.append(self.col_dol, [str_annual, str_month])
 
     def current_allocation(self, str_):
         '''Add portfolio current allocation data amount based on market value of shares
@@ -624,6 +648,7 @@ class Portfolio(Watchlist):
         port_value = f2dollar(self.port_value)
         port_cost = f2dollar(self.port_cost)
         port_perf = f2p(self.port_perf)
+        port_month_div = f2dollar(self.port_month_div)
         port_annual_div = f2dollar(self.port_annual_div)
         port_yield = f2p(self.port_yield)
         port_yoc = f2p(self.port_yoc)
@@ -631,15 +656,19 @@ class Portfolio(Watchlist):
         print_divider(num_symbol)
         self.sort(sort_column, ascending=ascending)
         df = self.cleanup_data(return_dataframe=True)
+        now = datetime.now(tz=pytz.timezone('US/Pacific'))
+        now = now.strftime("%b-%d-%y %H:%M:%S")
         print(df.loc[:, columns])
-        print("Portfolio Value:", port_value)
-        print("Portfolio Cost Basis:", port_cost)
-        print("Portfolio Performance:", port_perf)
-        print("Portfolio Annual Dividends:", port_annual_div)
-        print("Portfolio Yield:", port_yield)
-        print("Portfolio YoC:", port_yoc)
-        print("Portfolio Yield Growth:", port_yield_growth)
-        print("Warning Symbols: ", self.script_override)
+        print("Portfolio Value:\t\t", port_value)
+        print("Portfolio Cost Basis:\t\t", port_cost)
+        print("Portfolio Performance:\t\t", port_perf)
+        print("Portfolio Monthly Dividends:\t", port_month_div)
+        print("Portfolio Annual Dividends:\t", port_annual_div)
+        print("Portfolio Yield:\t\t", port_yield)
+        print("Portfolio YoC:\t\t\t", port_yoc)
+        print("Portfolio Yield Growth:\t\t", port_yield_growth)
+        print("Warning Symbols:\t\t", self.script_override)
+        print("Date/Time:\t\t\t", now)
 
     def graph_history(self, path_history):
         '''
@@ -723,11 +752,9 @@ if __name__ == "__main__":
     path_excel = cwd + "/data/Stocks.xlsx"
     path_m1 = cwd + "/personal/m1.csv"
     path_history = cwd + "/personal/history.csv"
-
     # system commands
     os.system("mv -f ~/Downloads/Stocks.xlsx " + path_excel + " 2>/dev/null")
     os.system("mv -f ~/Downloads/m1.csv " + path_m1 + " 2>/dev/null")
-
     # data constants
     percent_columns_perf = ["5D Perf", "1M Perf", "6M Perf", "YTD Perf", "1Y Perf", "3Y Perf",
                             "3Y Total Return", "5Y Perf", "5Y Total Return", "10Y Perf", "10Y Total Return"]
@@ -740,11 +767,9 @@ if __name__ == "__main__":
     percent_columns = percent_columns_perf + percent_columns_div
     dollar_columns = dollar_columns_div
     round_columns = round_columns_value
-
     # import data from excel file
     sheet_names = ["Performance", "Dividends", "Value"]
     df = excel_data(path_excel, sheet_names)
-
     # data analysis constants
     num_symbol = 9
     str_yield = "Yield"
@@ -753,6 +778,7 @@ if __name__ == "__main__":
     str_div_growth = "Ave Div Grow"
     str_pe = "P/E"
     str_tar_allocate = "Tar Allocate"
+    str_month_div = "Monthly Div"
     str_annual_div = "Annual Div"
     str_cur_allocate = "Cur Allocate"
     str_yoc = "YoC"
@@ -764,15 +790,15 @@ if __name__ == "__main__":
     export_columns = [str_yield, str_div_perf, str_div_growth,
                       str_yoc_year, str_pe, str_tar_allocate]
     m1_export_columns = [str_tar_allocate, str_cur_allocate, "Shares", "Ave Price", "Cost Basis",
-                         str_value, "Unrealized Gain %", "Annual Div", str_yield, str_yoc, str_yield_growth]
-
+                         str_value, "Unrealized Gain %", str_month_div, str_annual_div, str_yield,
+                         str_yoc, str_yield_growth]
     # pandas options
     pd.set_option("display.max_columns", len(export_columns))
     # pd.set_option("display.max_rows", None)
-
     # exceptions
-    exceptions = ["HRL", "ITW", "ESS", "ETR", "SNA", "DLR", "FLO"]
-
+    exceptions = ["HRL", "ITW", "ESS", "ETR"]
+    omit_symbols = ["ARKK", "ARKW", "ARKQ", "AVGO",
+                    "AGM", "NSP", "NTAP", "CDW", "LRCX"]
     # start data analysis to filter stocks to a singular watchlist
     watch = Watchlist(df, percent_columns, dollar_columns, round_columns)
     watch.yield_(str_yield)
@@ -787,23 +813,22 @@ if __name__ == "__main__":
     watch.update_watchlist(path_list)
     watch.allocate(str_yield, str_tar_allocate)
     watch.export_csv("watchlist", export_columns, str_yield)
-
     # start data analysis to highlight portfolio performance
     port = Portfolio(watch)
     port.update_portfolio_list(path_portfolio)
     port.m1_import(path_m1, percent_columns_m1, dollar_columns_m1)
-    port.annual_div(str_annual_div)
+    port.div_rate(str_annual_div, str_month_div)
     port.current_allocation(str_cur_allocate)
     port.yoc(str_yoc)
     port.yield_growth(str_yield_growth)
     port.calculate_summary()
     port.export_csv("portfolio", m1_export_columns, str_cur_allocate)
-
     # print data analysis
     watch.print_terminal(export_columns, str_yield, num_symbol=num_symbol)
     port.print_terminal(export_columns, str_yield, num_symbol=num_symbol)
     port.print_summary(m1_export_columns, str_cur_allocate,
                        num_symbol=num_symbol)
+    # port.print_terminal(export_columns, str_pe, ascending=True,
+    #                     num_symbol=num_symbol)
     port.graph_history(path_history)
-
-    # port.print_terminal(export_columns, str_pe, ascending=True)
+    # watch.graph_yield_yoc(omit_symbols=omit_symbols)
