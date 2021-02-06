@@ -796,7 +796,7 @@ if __name__ == "__main__":
     pd.set_option("display.max_columns", len(export_columns))
     # pd.set_option("display.max_rows", None)
     # exceptions
-    exceptions = ["HRL", "ITW", "ESS", "ETR"]
+    exceptions = ["HRL", "ITW", "ETR"]
     omit_symbols = ["ARKK", "ARKW", "ARKQ", "AVGO",
                     "AGM", "NSP", "NTAP", "CDW", "LRCX"]
     # start data analysis to filter stocks to a singular watchlist
