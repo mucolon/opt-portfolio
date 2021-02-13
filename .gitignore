@@ -1,5 +1,6 @@
 personal/
 .vscode/
+Portfolio\ Analysis.app/
 
 *.code-workspace
 *.DS_Store

@@ -175,11 +175,12 @@ class Watchlist:
     '''Class filters Stocks.xlsx to a watchlist dataframe that passes the filter_poor() method
     '''
 
-    def __init__(self, dataframe, percent_columns, dollar_columns, round_columns):
+    def __init__(self, dataframe, percent_columns, dollar_columns, round_columns, cwd=None):
         self.df = dataframe
         self.col_per = percent_columns
         self.col_dol = dollar_columns
         self.col_round = round_columns
+        self.cwd = cwd
 
     def yield_(self, str_):
         '''Add yield data column, will be FWD yield if present or TTM yield if FWD is missing
@@ -291,7 +292,9 @@ class Watchlist:
                 (self.df[str_years_growth].str[0] == "0") | (self.df[str_payout] > 0.95) |
                 (np.isnan(self.df[str_yield])) | (np.isnan(self.df[str_3y_div_growth])) |
                 (self.df[str_3y_div_growth] < 0) | (self.df[str_5y_div_growth] < 0) |
+                # dividend growth rate filter set by O
                 (self.df[str_div_growth] < 0.035) |
+                # 3y performance filter set by ABBV
                 (self.df[str_3y_perf] < -0.2) | (self.df[str_3y_total] < -0.03) |
                 (self.df[str_5y_perf] < 0) | (self.df[str_5y_total] < 0) |
                 (self.df[str_10y_perf] < 0) | (self.df[str_10y_total] < 0))
@@ -516,8 +519,7 @@ class Watchlist:
         '''
         self.sort(sort_column, ascending=ascending)
         df = self.cleanup_data(return_dataframe=True)
-        cwd = os.getcwd()
-        export_path = cwd + "/data/" + file_name + ".csv"
+        export_path = self.cwd + "/data/" + file_name + ".csv"
         df.loc[:, columns].to_csv(export_path)
 
     def graph_yield_yoc(self, omit_symbols=None):
@@ -557,6 +559,7 @@ class Portfolio(Watchlist):
         self.col_per = watch.col_per
         self.col_dol = watch.col_dol
         self.col_round = watch.col_round
+        self.cwd = watch.cwd
 
     def update_portfolio_list(self, path_list):
         '''Update portfolio list based on ignore csv portfolio column
@@ -745,7 +748,7 @@ class Portfolio(Watchlist):
 
 if __name__ == "__main__":
     # file paths
-    cwd = os.getcwd()
+    cwd = "/Users/marcoucolon/Documents/GitHub/opt-portfolio"
     path_ignore = cwd + "/data/ignore.csv"
     path_list = cwd + "/data/watchlist.txt"
     path_portfolio = cwd + "/data/portfolio.txt"
@@ -800,7 +803,8 @@ if __name__ == "__main__":
     omit_symbols = ["ARKK", "ARKW", "ARKQ", "AVGO",
                     "AGM", "NSP", "NTAP", "CDW", "LRCX"]
     # start data analysis to filter stocks to a singular watchlist
-    watch = Watchlist(df, percent_columns, dollar_columns, round_columns)
+    watch = Watchlist(df, percent_columns, dollar_columns,
+                      round_columns, cwd=cwd)
     watch.yield_(str_yield)
     watch.div_rate(str_div_rate)
     watch.ave_div_perf(str_div_perf)
