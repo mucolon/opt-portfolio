@@ -18,8 +18,8 @@ _ = []
 [_.append(x) for x in ignore_ if x not in _]
 ignore_ = _
 fin_len = len(ignore_)
-diff_len = -1*(fin_len - init_len)
-df["Ignore"] = ignore_ + [np.nan]*diff_len
+diff_len = -1 * (fin_len - init_len)
+df["Ignore"] = ignore_ + [np.nan] * diff_len
 df.dropna(how="all", inplace=True)
 df.to_csv(path_ignore, index=False)
 

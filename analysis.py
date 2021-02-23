@@ -139,7 +139,8 @@ def print_divider(num_symbol):
     _ = "*"
     _ = str(num_symbol * _)
     tab = "\t"
-    _ = tab + _ + tab + _ + tab + _ + tab + _
+    tab2 = "\t\t"
+    _ = tab + _ + tab2 + _ + tab2 + _ + tab2 + _
     print(_)
 
 
@@ -220,12 +221,13 @@ class Watchlist:
         col_3y_total = self.df.columns.get_loc(str_3y_total)
         col_5y_total = self.df.columns.get_loc(str_5y_total)
         col_10y_total = self.df.columns.get_loc(str_10y_total)
-        _3y_div_perf = (self.df[str_3y_total] - self.df[str_3y_perf]) / 3
-        _5y_div_perf = (self.df[str_5y_total] - self.df[str_5y_perf]) / 5
-        _10y_div_perf = (self.df[str_10y_total] - self.df[str_10y_perf]) / 10
-        self.df.insert(col_3y_total + 1, str_3y_div_perf, _3y_div_perf)
-        self.df.insert(col_5y_total + 1, str_5y_div_perf, _5y_div_perf)
-        self.df.insert(col_10y_total + 1, str_10y_div_perf, _10y_div_perf)
+        ave_3y_div_perf = (self.df[str_3y_total] - self.df[str_3y_perf]) / 3
+        ave_5y_div_perf = (self.df[str_5y_total] - self.df[str_5y_perf]) / 5
+        ave_10y_div_perf = (self.df[str_10y_total] -
+                            self.df[str_10y_perf]) / 10
+        self.df.insert(col_3y_total + 1, str_3y_div_perf, ave_3y_div_perf)
+        self.df.insert(col_5y_total + 1, str_5y_div_perf, ave_5y_div_perf)
+        self.df.insert(col_10y_total + 1, str_10y_div_perf, ave_10y_div_perf)
         col_div_perf = [str_3y_div_perf, str_5y_div_perf, str_10y_div_perf]
         self.ave_perf = self.df.loc[:, col_div_perf].mean(axis=1)
         self.df.insert(col_10y_total + 2, str_, self.ave_perf)
@@ -238,6 +240,11 @@ class Watchlist:
         self.str_div_growth = str_
         col_5y_growth = self.df.columns.get_loc("Div Growth 5Y")
         col_growth = [col_5y_growth - 1, col_5y_growth]
+        str_columns = self.df.columns.tolist()
+        str_growth = str_columns[col_growth[0]:col_growth[-1] + 1]
+        for i in str_growth:
+            filt = (self.df.loc[:, i].apply(type) == str)
+            self.df.loc[filt, i] = self.df.loc[filt, i].apply(float) / 100
         self.ave_growth = self.df.iloc[:, col_growth].mean(axis=1)
         self.df.insert(col_5y_growth + 1, str_, self.ave_growth)
         self.col_per = np.append(self.col_per, str_)
@@ -286,14 +293,16 @@ class Watchlist:
         str_5y_total = "5Y Total Return"
         str_10y_perf = "10Y Perf"
         str_10y_total = "10Y Total Return"
+        str_pe = self.str_pe
         threshold_yoc = self.df.loc["SCHD", str_yoc_year] * 1.1
         threshold_yield = self.df.loc["SCHD", str_yield] * 1.1
         filt = (((self.df[str_yield] < threshold_yield) & (self.df[str_yoc_year] < threshold_yoc)) |
                 (self.df[str_years_growth].str[0] == "0") | (self.df[str_payout] > 0.95) |
-                (np.isnan(self.df[str_yield])) | (np.isnan(self.df[str_3y_div_growth])) |
+                (self.df[str_pe] < 0) | (self.df[str_pe] > 100) |
+                (pd.isnull(self.df[str_yield])) | (pd.isnull(self.df[str_3y_div_growth])) |
                 (self.df[str_3y_div_growth] < 0) | (self.df[str_5y_div_growth] < 0) |
                 # dividend growth rate filter set by O
-                (self.df[str_div_growth] < 0.035) |
+                (self.df[str_div_growth] < 0.034) |
                 # 3y performance filter set by ABBV
                 (self.df[str_3y_perf] < -0.2) | (self.df[str_3y_total] < -0.03) |
                 (self.df[str_5y_perf] < 0) | (self.df[str_5y_total] < 0) |
@@ -376,16 +385,12 @@ class Watchlist:
         else:
             self.df.sort_values(column, inplace=True, ascending=ascending)
 
-    def allocate(self, column, str_):
-        '''Allocate portfolio distribution based on input column
+    def portfolio_mark(self, str_):
+        '''Mark symbols that are part of portfolio
         '''
-        self.str_tar_allocate = str_
-        index_portfolio = self.index_portfolio
-        sum_ = self.df.loc[index_portfolio, column].sum()
-        self.df[str_] = (1 / sum_) * self.df.loc[index_portfolio, column]
-        round_ = self.df.loc[index_portfolio, str_].apply(round, args=(2,))
-        self.df.loc[index_portfolio, str_] = round_
-        self.col_per = np.append(self.col_per, str_)
+        self.str_mark = str_
+        index_portfolio = self.index_portfolio + self.index_market
+        self.df.loc[index_portfolio, str_] = u'\u2713'
 
     def p2f_data(self, return_dataframe=False, input_dataframe=None):
         '''Convert string percent data columns to float number data columns. If return_dataframe is True, a new modified dataframe will be returned. If input_dataframe is not None, input_dataframe will be used to modify
@@ -418,13 +423,13 @@ class Watchlist:
             else:
                 new_df = input_dataframe
             for i in self.col_per:
-                filt = (new_df.loc[:, i].apply(np.isnan) != True)
+                filt = (new_df.loc[:, i].apply(pd.isnull) != True)
                 edit = new_df.loc[filt, i].apply(f2p)
                 new_df.loc[:, i] = edit
             return new_df
         else:
             for i in self.col_per:
-                filt = (self.df.loc[:, i].apply(np.isnan) != True)
+                filt = (self.df.loc[:, i].apply(pd.isnull) != True)
                 edit = self.df.loc[filt, i].apply(f2p)
                 self.df.loc[:, i] = edit
 
@@ -459,13 +464,13 @@ class Watchlist:
             else:
                 new_df = input_dataframe
             for i in self.col_dol:
-                filt = (new_df.loc[:, i].apply(np.isnan) != True)
+                filt = (new_df.loc[:, i].apply(pd.isnull) != True)
                 edit = new_df.loc[filt, i].apply(f2dollar)
                 new_df.loc[:, i] = edit
             return new_df
         else:
             for i in self.col_dol:
-                filt = (self.df.loc[:, i].apply(np.isnan) != True)
+                filt = (self.df.loc[:, i].apply(pd.isnull) != True)
                 edit = self.df.loc[filt, i].apply(f2dollar)
                 self.df.loc[:, i] = edit
 
@@ -478,13 +483,13 @@ class Watchlist:
             else:
                 new_df = input_dataframe
             for i in self.col_round:
-                filt = (new_df.loc[:, i].apply(np.isnan) != True)
+                filt = (new_df.loc[:, i].apply(pd.isnull) != True)
                 edit = new_df.loc[filt, i].apply(round, args=(place,))
                 new_df.loc[:, i] = edit
             return new_df
         else:
             for i in self.col_round:
-                filt = (self.df.loc[:, i].apply(np.isnan) != True)
+                filt = (self.df.loc[:, i].apply(pd.isnull) != True)
                 edit = self.df.loc[filt, i].apply(round, args=(place,))
                 self.df.loc[:, i] = edit
 
@@ -511,8 +516,6 @@ class Watchlist:
         df = self.cleanup_data(return_dataframe=True)
         print(df.loc[:, columns])
         print("Index Length:", len(df.index))
-        print(self.str_tar_allocate + " Total:",
-              self.df[self.str_tar_allocate].sum())
 
     def export_csv(self, file_name, columns, sort_column, ascending=False):
         '''Export specificed dataframe columns to a csv
@@ -551,7 +554,6 @@ class Portfolio(Watchlist):
         self.index_portfolio = watch.index_portfolio
         self.str_yield = watch.str_yield
         self.str_div_rate = watch.str_div_rate
-        self.str_tar_allocate = watch.str_tar_allocate
         index_ = watch.index_portfolio + watch.exceptions + watch.index_market
         index_ = remove_duplicates(index_)
         self.df = watch.df.loc[index_, :]
@@ -771,16 +773,16 @@ if __name__ == "__main__":
     dollar_columns = dollar_columns_div
     round_columns = round_columns_value
     # import data from excel file
-    sheet_names = ["Performance", "Dividends", "Value"]
+    sheet_names = ["Performance", "Dividends", "Value", "Growth"]
     df = excel_data(path_excel, sheet_names)
     # data analysis constants
-    num_symbol = 9
+    num_symbol = 5
     str_yield = "Yield"
     str_div_rate = "Div Rate"
     str_div_perf = "Ave Div Perf"
     str_div_growth = "Ave Div Grow"
     str_pe = "P/E"
-    str_tar_allocate = "Tar Allocate"
+    str_port = "Port"
     str_month_div = "Monthly Div"
     str_annual_div = "Annual Div"
     str_cur_allocate = "Cur Allocate"
@@ -791,8 +793,8 @@ if __name__ == "__main__":
     yoc_year = years[-1]
     str_yoc_year = str(yoc_year) + "Y YoC"
     export_columns = [str_yield, str_div_perf, str_div_growth,
-                      str_yoc_year, str_pe, str_tar_allocate]
-    m1_export_columns = [str_tar_allocate, str_cur_allocate, "Shares", "Ave Price", "Cost Basis",
+                      str_yoc_year, str_pe, str_port]
+    m1_export_columns = [str_cur_allocate, "Shares", "Ave Price", "Cost Basis",
                          str_value, "Unrealized Gain %", str_month_div, str_annual_div, str_yield,
                          str_yoc, str_yield_growth]
     # pandas options
@@ -815,7 +817,7 @@ if __name__ == "__main__":
     watch.sort(str_yield)
     watch.update_ignore_list(path_ignore)
     watch.update_watchlist(path_list)
-    watch.allocate(str_yield, str_tar_allocate)
+    watch.portfolio_mark(str_port)
     watch.export_csv("watchlist", export_columns, str_yield)
     # start data analysis to highlight portfolio performance
     port = Portfolio(watch)
