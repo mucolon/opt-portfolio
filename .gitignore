@@ -1,6 +1,10 @@
-personal/
-.vscode/
-Portfolio\ Analysis.app/
+# Directories
+/personal
+/.vscode
+/Portfolio\ Analysis.app
+/.venv
 
+# Files
 *.code-workspace
 *.DS_Store
+/tools/notes.md
