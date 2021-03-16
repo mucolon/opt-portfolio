@@ -138,7 +138,7 @@ def excel_data(path, sheet_names):
 
 
 def print_divider(num_symbol):
-    '''
+    '''Line divider that's printed to terminal when called
     '''
     _ = "*"
     _ = str(num_symbol * _)
@@ -159,7 +159,7 @@ def exp_func(x, a, b, c):
 
 
 def fit_data(func, xdata, ydata, return_r_squared=False):
-    '''
+    '''Performs data fit and returns data fit results
     '''
     popt, pcov = opt.curve_fit(func, xdata, ydata)
     fit_data = func(xdata, *popt)
@@ -547,7 +547,7 @@ class Watchlist:
         df.loc[:, columns].to_csv(export_path)
 
     def graph_yield_yoc(self, omit_symbols=None):
-        '''
+        '''Graphs yield on x-axis and YoC on y-axis
         '''
         if omit_symbols is None:
             omit_symbols = []
@@ -668,7 +668,7 @@ class Portfolio(Watchlist):
         self.port_perf = (self.port_value / self.port_cost) - 1
 
     def optimize(self, import_data=True):
-        '''
+        '''(WiP)Optimize portfolio allocation based on either Kelly Criterion or Sharpe Ratio
         '''
         len_port = len(self.index_portfolio)
         weights = np.array([1 / len_port] * len_port)
@@ -747,7 +747,7 @@ class Portfolio(Watchlist):
         print("Date/Time:\t\t\t", now)
 
     def graph_history(self, path_history):
-        '''
+        '''Graph portfolio performance on monthly intervals. Subplots include: Portfolio Value, Monthly Income, Cumulative Sum Income
         '''
         hist_df = pd.read_csv(path_history)
         cols = hist_df.columns.tolist()
