@@ -387,7 +387,9 @@ class Watchlist:
         # remove symbols that have been qualitatively removed
         entries = [i for i in entries if i not in self.remove_qual]
         # remove symbols that didn't pass filter_poor()
-        entries = [i for i in entries if i not in self.remove_script]
+        remove_script = [i for i in self.remove_script
+                         if i not in self.script_override]
+        entries = [i for i in entries if i not in remove_script]
         # entries = sorted(entries)
         with open(path_list, "w") as f:
             f.write(',\n'.join(entries))
@@ -583,16 +585,6 @@ class Portfolio(Watchlist):
         self.col_round = watch.col_round
         self.cwd = watch.cwd
 
-    def update_portfolio_list(self, path_list):
-        '''Update portfolio list based on ignore csv portfolio column
-        '''
-        port = self.sort(str_yield, return_dataframe=True,
-                         input_dataframe=self.df.loc[self.index_portfolio, :])
-        list_port = port.index.tolist()
-        # self.index_portfolio = sorted(self.index_portfolio)
-        with open(path_list, "w") as f:
-            f.write(',\n'.join(list_port))
-
     def m1_import(self, path_csv, percent_columns, dollar_columns):
         '''Import M1 csv file for portfolio analysis
         '''
@@ -652,6 +644,15 @@ class Portfolio(Watchlist):
         yield_growth = (self.df[self.str_yoc] / self.df[self.str_yield]) - 1
         self.df[str_] = yield_growth
         self.col_per = np.append(self.col_per, str_)
+
+    def update_portfolio_list(self, path_list, sort_column):
+        '''Update portfolio list based on ignore csv portfolio column
+        '''
+        port = self.sort(sort_column, return_dataframe=True,
+                         input_dataframe=self.df.loc[self.index_portfolio, :])
+        list_port = port.index.tolist()
+        with open(path_list, "w") as f:
+            f.write(',\n'.join(list_port))
 
     def calculate_summary(self):
         '''Calculate portfolio average yield, yoc, yield growth, and performance
@@ -820,7 +821,7 @@ class Portfolio(Watchlist):
 
 if __name__ == "__main__":
     # file paths
-    cwd = "/Users/marcoucolon/Documents/GitHub/opt-portfolio"
+    cwd = os.getcwd()
     path_ignore = cwd + "/data/ignore.csv"
     path_list = cwd + "/data/watchlist.txt"
     path_portfolio = cwd + "/data/portfolio.txt"
@@ -877,6 +878,7 @@ if __name__ == "__main__":
     pd.set_option("display.max_columns", len(export_columns))
     # pd.set_option("display.max_rows", None)
 
+    # exceptions = ["JEPI", "BLOK"]
     exceptions = []
 
     # start data analysis to filter stocks to a singular watchlist
@@ -897,12 +899,12 @@ if __name__ == "__main__":
 
     # start data analysis to highlight portfolio performance
     port = Portfolio(watch)
-    port.update_portfolio_list(path_portfolio)
     port.m1_import(path_m1, percent_columns_m1, dollar_columns_m1)
     port.div_rate(str_annual_div, str_month_div)
     port.current_allocation(str_cur_allocate)
     port.yoc(str_yoc)
     port.yield_growth(str_yield_growth)
+    port.update_portfolio_list(path_portfolio, str_cur_allocate)
     port.calculate_summary()
     # port.optimize(import_data=False)
     # port.optimize()

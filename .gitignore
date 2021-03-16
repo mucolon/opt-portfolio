@@ -3,8 +3,11 @@
 /.vscode
 /Portfolio\ Analysis.app
 /.venv
+/test
+/tools
 
 # Files
 *.code-workspace
 *.DS_Store
-/tools/notes.md
+poetry.lock
+pyproject.toml
