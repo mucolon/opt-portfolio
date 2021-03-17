@@ -308,6 +308,8 @@ class Watchlist:
                 (self.df[str_years_growth].str[0] == "0") | (self.df[str_payout] > 0.95) |
                 (pd.isnull(self.df[str_yield])) | (pd.isnull(self.df[str_3y_div_growth])) |
                 (self.df[str_3y_div_growth] < 0) | (self.df[str_5y_div_growth] < 0) |
+                # 3y div growth drastic slowdown compared to 5y div growth set by FCPT
+                ((self.df[str_3y_div_growth] / self.df[str_5y_div_growth]) < 0.15) |
                 # dividend growth rate filter set by O
                 (self.df[str_div_growth] < 0.034) |
                 # 3y performance filter set by ABBV

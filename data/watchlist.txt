@@ -1,6 +1,5 @@
 XYLD,
 MSM,
-DEA,
 STOR,
 CTRE,
 O,
