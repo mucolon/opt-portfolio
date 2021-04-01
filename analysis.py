@@ -299,8 +299,8 @@ class Watchlist:
         str_10y_total = "10Y Total Return"
         str_pe = self.str_pe
         str_schd = "SCHD"
-        threshold_yoc = self.df.loc[str_schd, str_yoc_year] * 1.1
-        threshold_yield = self.df.loc[str_schd, str_yield] * 1.1
+        threshold_yoc = self.df.loc[str_schd, str_yoc_year] * 1.05
+        threshold_yield = self.df.loc[str_schd, str_yield] * 1.05
         threshold_filt = ((self.df[str_yield] < threshold_yield) &
                           (self.df[str_yoc_year] < threshold_yoc))
         threshold_filt[str_schd] = False
@@ -880,7 +880,7 @@ if __name__ == "__main__":
     pd.set_option("display.max_columns", len(export_columns))
     # pd.set_option("display.max_rows", None)
 
-    # exceptions = ["JEPI", "BLOK"]
+    # exceptions = ["ARKK", "ARKW", "PBW"]
     exceptions = []
 
     # start data analysis to filter stocks to a singular watchlist
@@ -893,11 +893,11 @@ if __name__ == "__main__":
     watch.yoc_years(years)
     watch.pe_ratio(str_pe)
     watch.filter_poor(str_yoc_year)
-    watch.sort(str_yield_ave)
+    watch.sort(str_yield)
     watch.update_ignore_list(path_ignore, exceptions=exceptions)
     watch.update_watchlist(path_list)
     watch.portfolio_mark(str_port)
-    watch.export_csv("watchlist", export_columns, str_yield_ave)
+    watch.export_csv("watchlist", export_columns, str_yield)
 
     # start data analysis to highlight portfolio performance
     port = Portfolio(watch)
@@ -913,8 +913,8 @@ if __name__ == "__main__":
     port.export_csv("portfolio", m1_export_columns, str_cur_allocate)
 
     # print data analysis
-    watch.print_terminal(export_columns, str_yield_ave, num_symbol=num_symbol)
-    port.print_terminal(export_columns, str_yield_ave, num_symbol=num_symbol)
+    watch.print_terminal(export_columns, str_yield, num_symbol=num_symbol)
+    port.print_terminal(export_columns, str_yield, num_symbol=num_symbol)
     port.print_summary(m1_export_columns, str_cur_allocate,
                        num_symbol=num_symbol)
     # port.print_terminal(export_columns, str_pe, ascending=True,
