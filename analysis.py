@@ -255,13 +255,13 @@ class Watchlist:
         self.df.insert(col_5y_growth + 1, str_, self.ave_growth)
         self.col_per = np.append(self.col_per, str_)
 
-    def yoc_years(self, years):
+    def yoc_years(self, years, str_col_yield):
         '''Add projected yoc data columns
         '''
         col_ave_grow = self.df.columns.get_loc(self.str_div_growth)
         _ = 1
         for i in years:
-            yoc = self.fwd_yield * ((1 + self.ave_growth)**i)
+            yoc = self.df[str_col_yield] * ((1 + self.ave_growth)**i)
             str_ = str(i) + "Y YoC"
             self.df.insert(col_ave_grow + _, str_, yoc)
             self.col_per = np.append(self.col_per, str_)
@@ -319,11 +319,13 @@ class Watchlist:
         remove_script = self.df.loc[filt].index.values.tolist()
         self.remove_script = remove_script
 
-    def update_ignore_list(self, path_ignore, exceptions=None):
+    def update_ignore_list(self, path_ignore, exceptions=None, warning_exceptions=None):
         '''Update ignore csv based on symbols found after filter_poor() method
         '''
         if exceptions is None:
             exceptions = []
+        if warning_exceptions is None:
+            warning_exceptions = []
         self.exceptions = exceptions
         remove_script = self.remove_script  # symbols that didn't pass filter_poor()
         ignore_df = pd.read_csv(path_ignore)
@@ -367,8 +369,10 @@ class Watchlist:
         exceptions = remove_duplicates(exceptions)
         if remove_script != []:
             # symbols that didn't pass filter_poor() but are part of dataframe
-            self.script_override = [
-                i for i in index_portfolio if i in remove_script]
+            script_override = [i for i in index_portfolio
+                               if i in remove_script]
+            self.script_override = [i for i in script_override
+                                    if i not in warning_exceptions]
             # remove symbols if in exceptions list
             remove_edited = [i for i in remove_script if i not in exceptions]
             # remove symbols if not in stock spreadsheet
@@ -880,7 +884,7 @@ if __name__ == "__main__":
     pd.set_option("display.max_columns", len(export_columns))
     # pd.set_option("display.max_rows", None)
 
-    # exceptions = ["ARKK", "ARKW", "PBW"]
+    warning_exceptions = ["PBW", "ARKW", "BLOK", "ARKK", "JEPI"]
     exceptions = []
 
     # start data analysis to filter stocks to a singular watchlist
@@ -890,11 +894,12 @@ if __name__ == "__main__":
     watch.div_rate(str_div_rate)
     watch.ave_div_perf(str_div_perf)
     watch.ave_div_growth(str_div_growth)
-    watch.yoc_years(years)
+    watch.yoc_years(years, str_yield)
     watch.pe_ratio(str_pe)
     watch.filter_poor(str_yoc_year)
     watch.sort(str_yield)
-    watch.update_ignore_list(path_ignore, exceptions=exceptions)
+    watch.update_ignore_list(path_ignore, exceptions=exceptions,
+                             warning_exceptions=warning_exceptions)
     watch.update_watchlist(path_list)
     watch.portfolio_mark(str_port)
     watch.export_csv("watchlist", export_columns, str_yield)
@@ -913,8 +918,8 @@ if __name__ == "__main__":
     port.export_csv("portfolio", m1_export_columns, str_cur_allocate)
 
     # print data analysis
-    watch.print_terminal(export_columns, str_yield, num_symbol=num_symbol)
-    port.print_terminal(export_columns, str_yield, num_symbol=num_symbol)
+    watch.print_terminal(export_columns, str_yield_ave, num_symbol=num_symbol)
+    port.print_terminal(export_columns, str_yield_ave, num_symbol=num_symbol)
     port.print_summary(m1_export_columns, str_cur_allocate,
                        num_symbol=num_symbol)
     # port.print_terminal(export_columns, str_pe, ascending=True,
