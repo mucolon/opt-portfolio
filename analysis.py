@@ -3,8 +3,8 @@
 # Setup code
 import numpy as np
 import pandas as pd
-from pandas_datareader import data as web
 import os
+from pandas_datareader import data as web
 import matplotlib.pyplot as plt
 from matplotlib.offsetbox import AnchoredText
 import scipy.optimize as opt
@@ -299,8 +299,8 @@ class Watchlist:
         str_10y_total = "10Y Total Return"
         str_pe = self.str_pe
         str_schd = "SCHD"
-        threshold_yoc = self.df.loc[str_schd, str_yoc_year] * 1.05
-        threshold_yield = self.df.loc[str_schd, str_yield] * 1.05
+        threshold_yoc = self.df.loc[str_schd, str_yoc_year] * 1.1
+        threshold_yield = self.df.loc[str_schd, str_yield] * 1.1
         threshold_filt = ((self.df[str_yield] < threshold_yield) &
                           (self.df[str_yoc_year] < threshold_yoc))
         threshold_filt[str_schd] = False
@@ -884,8 +884,9 @@ if __name__ == "__main__":
     pd.set_option("display.max_columns", len(export_columns))
     # pd.set_option("display.max_rows", None)
 
-    warning_exceptions = ["PBW", "ARKW", "BLOK", "ARKK", "JEPI"]
-    exceptions = []
+    warning_exceptions = ["BLOK", "JEPI"]
+    # warning_exceptions = []
+    exceptions = ["ASML", "MSFT", "TSM", "AAPL", "NVDA"]
 
     # start data analysis to filter stocks to a singular watchlist
     watch = Watchlist(df, percent_columns, dollar_columns,
@@ -894,7 +895,7 @@ if __name__ == "__main__":
     watch.div_rate(str_div_rate)
     watch.ave_div_perf(str_div_perf)
     watch.ave_div_growth(str_div_growth)
-    watch.yoc_years(years, str_yield)
+    watch.yoc_years(years, str_yield)   # str_yield_ave
     watch.pe_ratio(str_pe)
     watch.filter_poor(str_yoc_year)
     watch.sort(str_yield)
