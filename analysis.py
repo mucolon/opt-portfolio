@@ -258,6 +258,7 @@ class Watchlist:
     def yoc_years(self, years, str_col_yield):
         '''Add projected yoc data columns
         '''
+        self.str_yoc_message = str_col_yield + " Base YoC Coefficient"
         col_ave_grow = self.df.columns.get_loc(self.str_div_growth)
         _ = 1
         for i in years:
@@ -305,7 +306,7 @@ class Watchlist:
                           (self.df[str_yoc_year] < threshold_yoc))
         threshold_filt[str_schd] = False
         filt = (threshold_filt | (self.df[str_pe] < 0) | (self.df[str_pe] > 100) |
-                (self.df[str_years_growth].str[0] == "0") | (self.df[str_payout] > 0.95) |
+                (self.df[str_years_growth].str[0] == "0") | (self.df[str_payout] > 0.9) |
                 (pd.isnull(self.df[str_yield])) | (pd.isnull(self.df[str_3y_div_growth])) |
                 (self.df[str_3y_div_growth] < 0) | (self.df[str_5y_div_growth] < 0) |
                 # 3y div growth drastic slowdown compared to 5y div growth set by FCPT
@@ -327,6 +328,7 @@ class Watchlist:
         if warning_exceptions is None:
             warning_exceptions = []
         self.exceptions = exceptions
+        self.warning_exceptions = warning_exceptions
         remove_script = self.remove_script  # symbols that didn't pass filter_poor()
         ignore_df = pd.read_csv(path_ignore)
         col_index_portfolio = ignore_df.columns.get_loc("Portfolio")
@@ -369,9 +371,9 @@ class Watchlist:
         exceptions = remove_duplicates(exceptions)
         if remove_script != []:
             # symbols that didn't pass filter_poor() but are part of dataframe
-            script_override = [i for i in index_portfolio
-                               if i in remove_script]
-            self.script_override = [i for i in script_override
+            self.script_override = [i for i in index_portfolio
+                                    if i in remove_script]
+            self.warning_symbols = [i for i in self.script_override
                                     if i not in warning_exceptions]
             # remove symbols if in exceptions list
             remove_edited = [i for i in remove_script if i not in exceptions]
@@ -576,12 +578,15 @@ class Portfolio(Watchlist):
     def __init__(self, watchlist_obj):
         watch = watchlist_obj
         self.exceptions = watch.exceptions
+        self.warning_exceptions = watch.warning_exceptions
+        self.warning_symbols = watch.warning_symbols
         self.remove_qual_poor = watch.remove_qual_poor
         self.add_qual_ave = watch.add_qual_ave
         self.script_override = watch.script_override
         self.index_portfolio = watch.index_portfolio
         self.str_yield = watch.str_yield
         self.str_div_rate = watch.str_div_rate
+        self.str_yoc_message = watch.str_yoc_message
         index_ = watch.index_portfolio + watch.exceptions
         index_ = remove_duplicates(index_)
         self.df = watch.df.loc[index_, :]
@@ -730,7 +735,7 @@ class Portfolio(Watchlist):
         port_yield = f2p(self.port_yield)
         port_yoc = f2p(self.port_yoc)
         port_yield_growth = f2p(self.port_yield_growth)
-        script_override = str(', '.join(self.script_override))
+        warning_symbols = str(', '.join(self.warning_symbols))
         remove_qual_poor = str(', '.join(self.remove_qual_poor))
         add_qual_ave = str(', '.join(self.add_qual_ave))
         print_divider(num_symbol)
@@ -739,6 +744,7 @@ class Portfolio(Watchlist):
         now = datetime.now(tz=pytz.timezone('US/Pacific'))
         now = now.strftime("%b-%d-%y %H:%M:%S")
         print(df.loc[:, columns])
+        print(self.str_yoc_message)
         print("Portfolio Value:\t\t", port_value)
         print("Portfolio Cost Basis:\t\t", port_cost)
         print("Portfolio Performance:\t\t", port_perf)
@@ -747,7 +753,7 @@ class Portfolio(Watchlist):
         print("Portfolio Yield:\t\t", port_yield)
         print("Portfolio YoC:\t\t\t", port_yoc)
         print("Portfolio Yield Growth:\t\t", port_yield_growth)
-        print("Warning Symbols:\t\t", script_override)
+        print("Warning Symbols:\t\t", warning_symbols)
         print("Remove Symbols:\t\t\t", remove_qual_poor)
         print("Add Symbols:\t\t\t", add_qual_ave)
         print("Date/Time:\t\t\t", now)
@@ -884,7 +890,7 @@ if __name__ == "__main__":
     pd.set_option("display.max_columns", len(export_columns))
     # pd.set_option("display.max_rows", None)
 
-    warning_exceptions = ["BLOK", "JEPI"]
+    warning_exceptions = ["BLOK", "JEPI", "QQQM"]
     # warning_exceptions = []
     exceptions = ["ASML", "MSFT", "TSM", "AAPL", "NVDA"]
 
