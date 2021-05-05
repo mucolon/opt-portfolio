@@ -1,18 +1,18 @@
 #!/usr/local/bin/python3
 
 # Setup code
+import os
+from datetime import datetime
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import os
-from pandas_datareader import data as web
-import matplotlib.pyplot as plt
-from matplotlib.offsetbox import AnchoredText
-import scipy.optimize as opt
-from datetime import datetime
+# import pylightxl as xl
 import pytz
+import scipy.optimize as opt
+from matplotlib.offsetbox import AnchoredText
+from pandas_datareader import data as web
+from pypfopt import expected_returns, risk_models
 from pypfopt.efficient_frontier import EfficientFrontier
-from pypfopt import risk_models
-from pypfopt import expected_returns
 
 
 def p2f(percent):
@@ -123,17 +123,21 @@ def dividends_data(path, raw_columns):
     return df
 
 
-def excel_data(path, sheet_names):
+def excel_data(path, sheet_names, columns_drop=None):
     '''Convert excel spreadsheet to dataframe
     '''
-    dic = pd.read_excel(path,
-                        sheet_name=sheet_names, engine="openpyxl")
+    dic = pd.read_excel(path, sheet_name=sheet_names)
+    # dic = xl.readxl(path, ws=tuple(sheet_names))
+    # print(dic, "\n")
     df = pd.concat([pd.DataFrame.from_dict(dic[i])
                     for i in sheet_names], axis=1)
     df = df.loc[:, ~df.columns.duplicated()]
     df.set_index("Symbol", inplace=True)
     df = df.rename_axis(None)
     df.replace("-", np.nan, inplace=True)
+    # new Yield rating column was added, remove in order to write a column w/ the same name
+    if columns_drop is not None:
+        df.drop(columns=columns_drop, inplace=True)
     return df
 
 
@@ -194,10 +198,15 @@ class Watchlist:
         self.str_yield = str_
         self.str_yield_ave = str_ave
         col_fwd_yield = self.df.columns.get_loc("Yield FWD")
-        col_yields = [col_fwd_yield - 1, col_fwd_yield]
-        port_yield = self.df.iloc[:, col_yields].mean(axis=1)
-        self.fwd_yield = 2 * port_yield - self.df.iloc[:, col_fwd_yield - 1]
-        self.df.insert(col_fwd_yield + 1, str_, self.fwd_yield)
+        # yield_use is yield fwd
+        self.yield_use = self.df.iloc[:, col_fwd_yield].copy()
+        filt = (pd.isnull(self.yield_use))
+        # missing yield fwd data, yield_use becomes yield ttm
+        self.yield_use[filt] = self.df.iloc[:, col_fwd_yield - 1]
+        filt = (pd.isnull(self.yield_use))
+        # missing yield fwd & ttm data, yield_use becomes 4y avg yield
+        self.yield_use[filt] = self.df.iloc[:, col_fwd_yield + 1]
+        self.df.insert(col_fwd_yield + 1, str_, self.yield_use)
         self.col_per = np.append(self.col_per, str_)
 
     def div_rate(self, str_):
@@ -205,10 +214,16 @@ class Watchlist:
         '''
         self.str_div_rate = str_
         col_fwd_rate = self.df.columns.get_loc("Div Rate FWD")
-        col_rates = [col_fwd_rate - 1, col_fwd_rate]
-        ave_rate = self.df.iloc[:, col_rates].mean(axis=1)
-        fwd_rate = 2 * ave_rate - self.df.iloc[:, col_fwd_rate - 1]
-        self.df.insert(col_fwd_rate + 1, str_, fwd_rate)
+        # div_rate_use is div rate fwd
+        self.div_rate_use = self.df.iloc[:, col_fwd_rate].copy()
+        filt = (pd.isnull(self.div_rate_use))
+        # missing div rate fwd data, div_rate_use becomes div rate ttm
+        self.div_rate_use[filt] = self.df.iloc[:, col_fwd_rate - 1]
+        filt = (pd.isnull(self.div_rate_use))
+        # missing div rate fwd & ttm data, div_rate_use becomes 4y avg yield * price
+        self.div_rate_use[filt] = self.df.loc[:,
+                                              self.str_yield] * self.df.loc[:, "Price"]
+        self.df.insert(col_fwd_rate + 1, str_, self.div_rate_use)
         self.col_dol = np.append(self.col_dol, str_)
 
     def ave_div_perf(self, str_):
@@ -860,7 +875,9 @@ if __name__ == "__main__":
 
     # import data from excel file
     sheet_names = ["Performance", "Dividends", "Value", "Growth"]
-    df = excel_data(path_excel, sheet_names)
+    # columns_drop = ["Yield"]
+    columns_drop = []
+    df = excel_data(path_excel, sheet_names, columns_drop=columns_drop)
 
     # data analysis constants
     num_symbol = 5
@@ -883,8 +900,8 @@ if __name__ == "__main__":
     export_columns = [str_yield, str_yield_ave, str_div_perf, str_div_growth,
                       str_yoc_year, str_pe, str_port]
     m1_export_columns = [str_cur_allocate, "Shares", "Ave Price", "Cost Basis",
-                         str_value, "Unrealized Gain %", str_month_div, str_annual_div, str_yield_ave, str_yield,
-                         str_yoc, str_yield_growth]
+                         str_value, "Unrealized Gain %", str_div_rate, str_month_div, str_annual_div,
+                         str_yield_ave, str_yield, str_yoc, str_yield_growth]
 
     # pandas options
     pd.set_option("display.max_columns", len(export_columns))
@@ -892,7 +909,8 @@ if __name__ == "__main__":
 
     warning_exceptions = ["BLOK", "JEPI", "QQQM"]
     # warning_exceptions = []
-    exceptions = ["ASML", "MSFT", "TSM", "AAPL", "NVDA"]
+    exceptions = ["ASML", "MSFT", "TSM", "AAPL",
+                  "NVDA", "UNH", "FCPT", "STOR", "O"]
 
     # start data analysis to filter stocks to a singular watchlist
     watch = Watchlist(df, percent_columns, dollar_columns,
