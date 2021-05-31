@@ -6,6 +6,7 @@ from datetime import datetime
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import warnings
 # import pylightxl as xl
 import pytz
 import scipy.optimize as opt
@@ -566,7 +567,7 @@ class Watchlist:
         '''
         self.sort(sort_column, ascending=ascending)
         df = self.cleanup_data(return_dataframe=True)
-        export_path = self.cwd + "/data/" + file_name + ".csv"
+        export_path = self.cwd + "/" + file_name + ".csv"
         df.loc[:, columns].to_csv(export_path)
 
     def graph_yield_yoc(self, omit_symbols=None):
@@ -675,7 +676,7 @@ class Portfolio(Watchlist):
         '''Update portfolio list based on ignore csv portfolio column
         '''
         port = self.sort(sort_column, return_dataframe=True,
-                         input_dataframe=self.df.loc[self.index_portfolio, :])
+                         input_dataframe=self.df)
         list_port = port.index.tolist()
         with open(path_list, "w") as f:
             f.write(',\n'.join(list_port))
@@ -816,27 +817,45 @@ class Portfolio(Watchlist):
         # portfolio value plot
         ax1.fill_between(data_date, data_value, color=li_green)
         ax1.set_title("Portfolio Value")
+
         # portfolio monthly income plot
         ax2.plot(data_date, data_income, ".-", label="Raw")
         ax2.plot(future_date, future_income, ".-", label="Forcast",
                  color=li_green)
         # ax2.plot(future_date, fit_income, ".-", label="Fit", color=li_green)
-        str_fit_eqn = '\n'.join(("Fit Equation:",
-                                 r"%.2f$e^{%.2fx}$%.2f" % (
-                                     popt_income[0], popt_income[1], popt_income[2])))
+        # add an addition symbol to the intercept/nought constant is not negative
+        if popt_income[2] > 0:
+            nought = "+" + str(round(popt_income[2], 2))
+            str_fit_eqn = '\n'.join(("Fit Equation:",
+                                     r"%.2f$e^{%.2fx}$%s" % (
+                                         popt_income[0], popt_income[1], nought)))
+        else:
+            str_fit_eqn = '\n'.join(("Fit Equation:",
+                                     r"%.2f$e^{%.2fx}$%.2f" % (
+                                         popt_income[0], popt_income[1], popt_income[2])))
         props = dict(boxstyle='round', facecolor="white", edgecolor=li_grey)
         anchored_text = AnchoredText(str_fit_eqn, loc=4, frameon=False,
                                      prop=dict(bbox=props))
         ax2.add_artist(anchored_text)
         ax2.set_title("Monthly Income")
         ax2.legend(loc="best")
+
         # portfolio cumsum income plot
         ax3.plot(data_date, cumsum_income, ".-", label="Raw")
         ax3.plot(data_date, fit_cumsum, label="Fit", color=li_green)
-        str_fit_eqn = '\n'.join(("Fit Equation:",
-                                 r"%.2f$e^{%.2fx}$%.2f" % (
-                                     popt_cumsum[0], popt_cumsum[1], popt_cumsum[2]),
-                                 r"$R^2$= %.2f" % (r2_cumsum,)))
+        # add an addition symbol to the intercept/nought constant is not negative
+        if popt_cumsum[2] > 0:
+            nought = "+" + str(round(popt_cumsum[2], 2))
+            str_fit_eqn = '\n'.join(("Fit Equation:",
+                                     r"%.2f$e^{%.2fx}$%s" % (
+                                         popt_cumsum[0], popt_cumsum[1], nought),
+                                     r"$R^2$= %.2f" % (r2_cumsum,)))
+        else:
+            str_fit_eqn = '\n'.join(("Fit Equation:",
+                                     r"%.2f$e^{%.2fx}$%.2f" % (
+                                         popt_cumsum[0], popt_cumsum[1], popt_cumsum[2]),
+                                     r"$R^2$= %.2f" % (r2_cumsum,)))
+
         props = dict(boxstyle='round', facecolor="white", edgecolor=li_grey)
         anchored_text = AnchoredText(str_fit_eqn, loc=4, frameon=False,
                                      prop=dict(bbox=props))
@@ -875,9 +894,11 @@ if __name__ == "__main__":
 
     # import data from excel file
     sheet_names = ["Performance", "Dividends", "Value", "Growth"]
-    # columns_drop = ["Yield"]
-    columns_drop = []
-    df = excel_data(path_excel, sheet_names, columns_drop=columns_drop)
+    columns_drop = ["Yield"]
+    # columns_drop = []
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        df = excel_data(path_excel, sheet_names, columns_drop=columns_drop)
 
     # data analysis constants
     num_symbol = 5
@@ -907,10 +928,10 @@ if __name__ == "__main__":
     pd.set_option("display.max_columns", len(export_columns))
     # pd.set_option("display.max_rows", None)
 
-    warning_exceptions = ["BLOK", "JEPI", "QQQM"]
+    warning_exceptions = ["QQQM", "BLOK", "JEPI",
+                          "AAPL", "NVDA", "ASML", "MSFT", "TSM"]
     # warning_exceptions = []
-    exceptions = ["ASML", "MSFT", "TSM", "AAPL",
-                  "NVDA", "UNH", "FCPT", "STOR", "O"]
+    exceptions = ["FCPT", "STOR", "O"]
 
     # start data analysis to filter stocks to a singular watchlist
     watch = Watchlist(df, percent_columns, dollar_columns,
@@ -927,7 +948,7 @@ if __name__ == "__main__":
                              warning_exceptions=warning_exceptions)
     watch.update_watchlist(path_list)
     watch.portfolio_mark(str_port)
-    watch.export_csv("watchlist", export_columns, str_yield)
+    watch.export_csv("data/watchlist", export_columns, str_yield)
 
     # start data analysis to highlight portfolio performance
     port = Portfolio(watch)
@@ -940,7 +961,7 @@ if __name__ == "__main__":
     port.calculate_summary()
     # port.optimize(import_data=False)
     # port.optimize()
-    port.export_csv("portfolio", m1_export_columns, str_cur_allocate)
+    port.export_csv("personal/portfolio", m1_export_columns, str_cur_allocate)
 
     # print data analysis
     watch.print_terminal(export_columns, str_yield_ave, num_symbol=num_symbol)
