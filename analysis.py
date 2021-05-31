@@ -940,7 +940,7 @@ if __name__ == "__main__":
     watch.div_rate(str_div_rate)
     watch.ave_div_perf(str_div_perf)
     watch.ave_div_growth(str_div_growth)
-    watch.yoc_years(years, str_yield)   # str_yield_ave
+    watch.yoc_years(years, str_yield_ave)   # str_yield_ave
     watch.pe_ratio(str_pe)
     watch.filter_poor(str_yoc_year)
     watch.sort(str_yield)
