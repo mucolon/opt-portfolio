@@ -136,6 +136,7 @@ def excel_data(path, sheet_names, columns_drop=None):
     df.set_index("Symbol", inplace=True)
     df = df.rename_axis(None)
     df.replace("-", np.nan, inplace=True)
+    df.replace("NM", np.nan, inplace=True)
     # new Yield rating column was added, remove in order to write a column w/ the same name
     if columns_drop is not None:
         df.drop(columns=columns_drop, inplace=True)
@@ -292,7 +293,8 @@ class Watchlist:
         col_pes = [col_fwd_pe - 1, col_fwd_pe]
         ave_pe = self.df.iloc[:, col_pes].mean(axis=1)
         filt = (ave_pe == self.df.iloc[:, col_fwd_pe])
-        fwd_pe = 2 * ave_pe - self.df.iloc[:, col_fwd_pe - 1]
+        ttm_pe = self.df.iloc[:, col_fwd_pe - 1]
+        fwd_pe = 2 * ave_pe - ttm_pe
         fwd_pe[filt] = ave_pe
         self.df.insert(col_fwd_pe + 1, str_, fwd_pe)
         self.col_round = np.append(self.col_round, str_)
@@ -940,7 +942,7 @@ if __name__ == "__main__":
     watch.div_rate(str_div_rate)
     watch.ave_div_perf(str_div_perf)
     watch.ave_div_growth(str_div_growth)
-    watch.yoc_years(years, str_yield_ave)   # str_yield_ave
+    watch.yoc_years(years, str_yield)   # str_yield_ave
     watch.pe_ratio(str_pe)
     watch.filter_poor(str_yoc_year)
     watch.sort(str_yield)
