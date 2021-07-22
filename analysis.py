@@ -4,6 +4,7 @@
 import os
 from datetime import datetime
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 import numpy as np
 import pandas as pd
 import warnings
@@ -155,7 +156,9 @@ def print_divider(num_symbol):
 
 
 def exp_func(x, a, b, c):
-    '''Exponential function with parameters for constants. Function: a*exp(b*x)+c. Input: x can be an int or list
+    '''Exponential function with parameters for constants.
+        Function: a*exp(b*x)+c
+        Input: x can be an int or list
     '''
     try:
         len(x)
@@ -165,7 +168,10 @@ def exp_func(x, a, b, c):
 
 
 def fit_data(func, xdata, ydata, return_r_squared=False):
-    '''Performs data fit and returns data fit results
+    '''Performs data fit and returns data fit results.
+        Returns:
+            fit_data[list]: fitted y data
+            popt[list]: input func fitted constants
     '''
     popt, pcov = opt.curve_fit(func, xdata, ydata)
     fit_data = func(xdata, *popt)
@@ -777,7 +783,7 @@ class Portfolio(Watchlist):
         print(f'Date/Time:\t\t\t{now}')
 
     def graph_history(self, path_history):
-        '''Graph portfolio performance on monthly intervals. Subplots include: Portfolio Value, Monthly Income, Cumulative Sum Income
+        '''Graph portfolio performance on monthly intervals.
         '''
         hist_df = pd.read_csv(path_history)
         cols = hist_df.columns.tolist()
@@ -797,6 +803,7 @@ class Portfolio(Watchlist):
             year_income.append(data_income.loc[filt].sum())
         # list of cumulative sum of monthly income
         cumsum_income = data_income.cumsum()
+        data_yield = (cumsum_income / data_value) * 1e2
         fit_cumsum, popt_cumsum, r2_cumsum = fit_data(exp_func, months,
                                                       cumsum_income)
         # model monthly income based on curve fit of cumsum_income
@@ -812,58 +819,68 @@ class Portfolio(Watchlist):
         # curve fit monthly income
         fit_income, popt_income = fit_data(exp_func, future_months, future_income,
                                            return_r_squared=True)
-        # initialize graph
-        fig, (ax1, ax2, ax3) = plt.subplots(3, 1)
-        li_green = '#6BA755'
+        # colors
         li_grey = '#D7D7D7'
-        # portfolio value plot
-        ax1.fill_between(data_date, data_value, color=li_green)
-        ax1.set_title('Portfolio Value')
 
-        # portfolio monthly income plot
-        ax2.plot(data_date, data_income, '.-', label='Raw')
-        ax2.plot(future_date, future_income, '.-', label='Forcast',
-                 color=li_green)
-        # ax2.plot(future_date, fit_income, '.-', label='Fit', color=li_green)
-        # add an addition symbol to the intercept/nought constant is not negative
-        if popt_income[2] > 0:
-            nought = '+' + str(round(popt_income[2], 2))
-            str_fit_eqn = '\n'.join(('Fit Equation:',
-                                     r'%.2f$e^{%.2fx}$%s' % (
-                                         popt_income[0], popt_income[1], nought)))
-        else:
-            str_fit_eqn = '\n'.join(('Fit Equation:',
-                                     r'%.2f$e^{%.2fx}$%.2f' % (
-                                         popt_income[0], popt_income[1], popt_income[2])))
-        props = dict(boxstyle='round', facecolor='white', edgecolor=li_grey)
-        anchored_text = AnchoredText(str_fit_eqn, loc=4, frameon=False,
-                                     prop=dict(bbox=props))
-        ax2.add_artist(anchored_text)
-        ax2.set_title('Monthly Income')
-        ax2.legend(loc='best')
-
-        # portfolio cumsum income plot
-        ax3.plot(data_date, cumsum_income, '.-', label='Raw')
-        ax3.plot(data_date, fit_cumsum, label='Fit', color=li_green)
+        # initialize graph
+        fig, (ax1, ax2) = plt.subplots(1, 2)
+        format_date = '%m/%y'
+        format_dollar = '${x:0.2f}'
+        format_percent = '{x:0.2f}%'
+        # portfolio value/income plot
+        ax1.plot(data_date, data_yield, '-C9', label='Cumulative Yield')
+        ax1.yaxis.set_major_formatter(format_percent)
+        ax1.yaxis.set_tick_params(color='C9', labelcolor='C9')
+        ax1_t = ax1.twinx()
+        ax1_t.plot(data_date, data_value, '.-C2', label='Value')
+        ax1_t.plot(data_date, data_income, '-C4', label='Dividends')
+        ax1_t.plot(data_date, cumsum_income, '.-',
+                   label='Cumulative Dividends')
+        ax1_t.plot([], [], '-C9', label='Cumulative Yield')
+        ax1_t.set_yscale('log')
+        ax1_t.yaxis.set_major_formatter(format_dollar)
+        ax1_t.legend(loc=2)
+        ax1.xaxis.set_major_formatter(mdates.DateFormatter(format_date))
+        ax1.set_title('Portfolio')
+        # dividend fitting plot
+        ax2.plot(data_date, cumsum_income, '.-', label='Cumulative')
+        ax2.plot(data_date, fit_cumsum, 'C2', label='Cumulative Fit')
+        ax2.plot(data_date, data_income, '.-C4', label='Monthly')
+        ax2.plot(future_date, fit_income, '.-C2', label='Forcast')
+        # cumulative dividend fit eqn
         # add an addition symbol to the intercept/nought constant is not negative
         if popt_cumsum[2] > 0:
             nought = '+' + str(round(popt_cumsum[2], 2))
-            str_fit_eqn = '\n'.join(('Fit Equation:',
-                                     r'%.2f$e^{%.2fx}$%s' % (
-                                         popt_cumsum[0], popt_cumsum[1], nought),
-                                     r'$R^2$= %.2f' % (r2_cumsum,)))
+            str_fit_eqn_1 = '\n'.join(('Cumulative', 'Fit Equation:',
+                                       r'%.2f$e^{%.2fx}$%s' % (
+                                           popt_cumsum[0], popt_cumsum[1], nought),
+                                       r'$R^2$= %.2f' % (r2_cumsum,)))
         else:
-            str_fit_eqn = '\n'.join(('Fit Equation:',
-                                     r'%.2f$e^{%.2fx}$%.2f' % (
-                                         popt_cumsum[0], popt_cumsum[1], popt_cumsum[2]),
-                                     r'$R^2$= %.2f' % (r2_cumsum,)))
-
+            str_fit_eqn_1 = '\n'.join(('Cumulative', 'Fit Equation:',
+                                       r'%.2f$e^{%.2fx}$%.2f' % (
+                                           popt_cumsum[0], popt_cumsum[1], popt_cumsum[2]),
+                                       r'$R^2$= %.2f' % (r2_cumsum,)))
+        # monthly dividend fit eqn
+        # add an addition symbol to the intercept/nought constant is not negative
+        if popt_income[2] > 0:
+            nought = '+' + str(round(popt_income[2], 2))
+            str_fit_eqn_2 = '\n'.join(('Monthly', 'Fit Equation:',
+                                       r'%.2f$e^{%.2fx}$%s' % (
+                                           popt_income[0], popt_income[1], nought)))
+        else:
+            str_fit_eqn_2 = '\n'.join(('Monthly', 'Fit Equation:',
+                                       r'%.2f$e^{%.2fx}$%.2f' % (
+                                           popt_income[0], popt_income[1], popt_income[2])))
         props = dict(boxstyle='round', facecolor='white', edgecolor=li_grey)
+        str_fit_eqn = f'{str_fit_eqn_1}\n{str_fit_eqn_2}'
         anchored_text = AnchoredText(str_fit_eqn, loc=4, frameon=False,
                                      prop=dict(bbox=props))
-        ax3.add_artist(anchored_text)
-        ax3.set_title('Cumulative Sum Income')
-        ax3.legend(loc='best')
+        ax2.add_artist(anchored_text)
+        ax2.yaxis.set_major_formatter(format_dollar)
+        ax2.legend(loc=2)
+        ax2.xaxis.set_major_formatter(mdates.DateFormatter(format_date))
+        ax2.set_title('Dividends')
+        fig.autofmt_xdate()
         plt.show()
 
 
@@ -930,10 +947,11 @@ if __name__ == '__main__':
     pd.set_option('display.max_columns', len(export_columns))
     # pd.set_option('display.max_rows', None)
 
-    warning_exceptions = ['QQQM', 'BLOK', 'JEPI',
-                          'MSFT', 'ASML', 'TSM', 'AAPL', 'NVDA', 'TSLA']
+    warning_exceptions = ['QQQM', 'ARKK', 'BLOK', 'JEPI',
+                          'ASML', 'MSFT', 'TSM', 'TSLA', 'NVDA', 'AAPL']
     # warning_exceptions = []
-    exceptions = ['FCPT', 'STOR', 'O']
+    # exceptions = ['FCPT', 'STOR', 'O']
+    exceptions = []
 
     # start data analysis to filter stocks to a singular watchlist
     watch = Watchlist(df, percent_columns, dollar_columns,
@@ -967,9 +985,6 @@ if __name__ == '__main__':
 
     # print data analysis
     watch.print_terminal(export_columns, str_yield_ave, num_symbol=num_symbol)
-    port.print_terminal(export_columns, str_yield_ave, num_symbol=num_symbol)
     port.print_summary(m1_export_columns, str_cur_allocate,
                        num_symbol=num_symbol)
-    # port.print_terminal(export_columns, str_pe, ascending=True,
-    #                     num_symbol=num_symbol)
     port.graph_history(path_history)
