@@ -819,14 +819,13 @@ class Portfolio(Watchlist):
         # curve fit monthly income
         fit_income, popt_income = fit_data(exp_func, future_months, future_income,
                                            return_r_squared=True)
-        # colors
-        li_grey = '#D7D7D7'
-
         # initialize graph
+        li_grey = '#D7D7D7'
         fig, (ax1, ax2) = plt.subplots(1, 2)
         format_date = '%m/%y'
-        format_dollar = '${x:0.2f}'
-        format_percent = '{x:0.2f}%'
+        # format_dollar = '${x:0.2f}'
+        format_dollar = '${x:.2f}'
+        format_percent = '{x:.2f}%'
         # portfolio value/income plot
         ax1.plot(data_date, data_yield, '-C9', label='Cumulative Yield')
         ax1.yaxis.set_major_formatter(format_percent)
@@ -851,12 +850,12 @@ class Portfolio(Watchlist):
         # add an addition symbol to the intercept/nought constant is not negative
         if popt_cumsum[2] > 0:
             nought = '+' + str(round(popt_cumsum[2], 2))
-            str_fit_eqn_1 = '\n'.join(('Cumulative', 'Fit Equation:',
+            str_fit_eqn_1 = '\n'.join(('$\\bfCumulative$', 'Fit Equation:',
                                        r'%.2f$e^{%.2fx}$%s' % (
                                            popt_cumsum[0], popt_cumsum[1], nought),
                                        r'$R^2$= %.2f' % (r2_cumsum,)))
         else:
-            str_fit_eqn_1 = '\n'.join(('Cumulative', 'Fit Equation:',
+            str_fit_eqn_1 = '\n'.join(('$\\bfCumulative$', 'Fit Equation:',
                                        r'%.2f$e^{%.2fx}$%.2f' % (
                                            popt_cumsum[0], popt_cumsum[1], popt_cumsum[2]),
                                        r'$R^2$= %.2f' % (r2_cumsum,)))
@@ -864,11 +863,11 @@ class Portfolio(Watchlist):
         # add an addition symbol to the intercept/nought constant is not negative
         if popt_income[2] > 0:
             nought = '+' + str(round(popt_income[2], 2))
-            str_fit_eqn_2 = '\n'.join(('Monthly', 'Fit Equation:',
+            str_fit_eqn_2 = '\n'.join(('$\\bfMonthly$', 'Fit Equation:',
                                        r'%.2f$e^{%.2fx}$%s' % (
                                            popt_income[0], popt_income[1], nought)))
         else:
-            str_fit_eqn_2 = '\n'.join(('Monthly', 'Fit Equation:',
+            str_fit_eqn_2 = '\n'.join(('$\\bfMonthly$', 'Fit Equation:',
                                        r'%.2f$e^{%.2fx}$%.2f' % (
                                            popt_income[0], popt_income[1], popt_income[2])))
         props = dict(boxstyle='round', facecolor='white', edgecolor=li_grey)
