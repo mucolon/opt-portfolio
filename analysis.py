@@ -8,7 +8,6 @@ import matplotlib.dates as mdates
 import numpy as np
 import pandas as pd
 import warnings
-# import pylightxl as xl
 import pytz
 import scipy.optimize as opt
 from matplotlib.offsetbox import AnchoredText
@@ -16,31 +15,29 @@ from pandas_datareader import data as web
 from pypfopt import expected_returns, risk_models
 from pypfopt.efficient_frontier import EfficientFrontier
 
+# import pylightxl as xl
+
 
 def p2f(percent):
-    '''Convert string percent to a float number
-    '''
-    return float(percent.strip('%')) / 100
+    """Convert string percent to a float number"""
+    return float(percent.strip("%")) / 100
 
 
 def f2p(float_):
-    '''Convert float number to a string percent
-    '''
-    return f'{round(100 * float_, 2)}%'
+    """Convert float number to a string percent"""
+    return f"{round(100 * float_, 2)}%"
 
 
 def dollar2f(dollar):
-    '''Convert string dollar to float number
-    '''
-    return float(dollar.strip('$'))
+    """Convert string dollar to float number"""
+    return float(dollar.strip("$"))
 
 
 def f2dollar(float_, drop_cents=False):
-    '''Convert float number to string dollar
-    '''
-    dollar = f'${round(float_, 2)}'
+    """Convert float number to string dollar"""
+    dollar = f"${round(float_, 2)}"
     length = len(dollar)
-    decimal = dollar.index('.')
+    decimal = dollar.index(".")
     if (length - decimal) == 2:
         dollar = f'{dollar}0'
     if drop_cents:
@@ -131,8 +128,7 @@ def excel_data(path, sheet_names, columns_drop=None):
     dic = pd.read_excel(path, sheet_name=sheet_names)
     # dic = xl.readxl(path, ws=tuple(sheet_names))
     # print(dic, '\n')
-    df = pd.concat([pd.DataFrame.from_dict(dic[i])
-                    for i in sheet_names], axis=1)
+    df = pd.concat([pd.DataFrame.from_dict(dic[i]) for i in sheet_names], axis=1)
     df = df.loc[:, ~df.columns.duplicated()]
     df.set_index('Symbol', inplace=True)
     df = df.rename_axis(None)
@@ -156,14 +152,14 @@ def print_divider(num_symbol):
 
 
 def exp_func(x, a, b, c):
-    '''Exponential function with parameters for constants.
-        Function: a*exp(b*x)+c
-        Input: x can be an int or list
-    '''
+    """Exponential function with parameters for constants.
+    Function: a*exp(b*x)+c
+    Input: x can be an int or list
+    """
     try:
         len(x)
     except TypeError:
-        return (a * np.exp(b * x) + c)
+        return a * np.exp(b * x) + c
     return [(a * np.exp(b * i) + c) for i in x]
 
 
@@ -182,8 +178,8 @@ def fit_data(func, xdata, ydata, return_r_squared=False):
         return fit_data, popt
     else:
         residuals = fit_data - ydata
-        ss_res = np.sum(residuals**2)
-        ss_tot = np.sum((ydata - np.mean(ydata))**2)
+        ss_res = np.sum(residuals ** 2)
+        ss_tot = np.sum((ydata - np.mean(ydata)) ** 2)
         r_squared = 1 - (ss_res / ss_tot)
         return fit_data, popt, r_squared
 
@@ -208,10 +204,10 @@ class Watchlist:
         col_fwd_yield = self.df.columns.get_loc('Yield FWD')
         # yield_use is yield fwd
         self.yield_use = self.df.iloc[:, col_fwd_yield].copy()
-        filt = (pd.isnull(self.yield_use))
+        filt = pd.isnull(self.yield_use)
         # missing yield fwd data, yield_use becomes yield ttm
         self.yield_use[filt] = self.df.iloc[:, col_fwd_yield - 1]
-        filt = (pd.isnull(self.yield_use))
+        filt = pd.isnull(self.yield_use)
         # missing yield fwd & ttm data, yield_use becomes 4y avg yield
         self.yield_use[filt] = self.df.iloc[:, col_fwd_yield + 1]
         self.df.insert(col_fwd_yield + 1, str_, self.yield_use)
@@ -252,8 +248,7 @@ class Watchlist:
         col_10y_total = self.df.columns.get_loc(str_10y_total)
         ave_3y_div_perf = (self.df[str_3y_total] - self.df[str_3y_perf]) / 3
         ave_5y_div_perf = (self.df[str_5y_total] - self.df[str_5y_perf]) / 5
-        ave_10y_div_perf = (self.df[str_10y_total] -
-                            self.df[str_10y_perf]) / 10
+        ave_10y_div_perf = (self.df[str_10y_total] - self.df[str_10y_perf]) / 10
         self.df.insert(col_3y_total + 1, str_3y_div_perf, ave_3y_div_perf)
         self.df.insert(col_5y_total + 1, str_5y_div_perf, ave_5y_div_perf)
         self.df.insert(col_10y_total + 1, str_10y_div_perf, ave_10y_div_perf)
@@ -270,9 +265,9 @@ class Watchlist:
         col_5y_growth = self.df.columns.get_loc('Div Growth 5Y')
         col_growth = [col_5y_growth - 1, col_5y_growth]
         str_columns = self.df.columns.tolist()
-        str_growth = str_columns[col_growth[0]:col_growth[-1] + 1]
+        str_growth = str_columns[col_growth[0] : col_growth[-1] + 1]
         for i in str_growth:
-            filt = (self.df.loc[:, i].apply(type) == str)
+            filt = self.df.loc[:, i].apply(type) == str
             self.df.loc[filt, i] = self.df.loc[filt, i].apply(float) / 100
         self.ave_growth = self.df.iloc[:, col_growth].mean(axis=1)
         self.df.insert(col_5y_growth + 1, str_, self.ave_growth)
@@ -285,8 +280,8 @@ class Watchlist:
         col_ave_grow = self.df.columns.get_loc(self.str_div_growth)
         _ = 1
         for i in years:
-            yoc = self.df[str_col_yield] * ((1 + self.ave_growth)**i)
-            str_ = f'{i}Y YoC'
+            yoc = self.df[str_col_yield] * ((1 + self.ave_growth) ** i)
+            str_ = f"{i}Y YoC"
             self.df.insert(col_ave_grow + _, str_, yoc)
             self.col_per = np.append(self.col_per, str_)
             _ += 1
@@ -298,7 +293,7 @@ class Watchlist:
         col_fwd_pe = self.df.columns.get_loc('P/E FWD')
         col_pes = [col_fwd_pe - 1, col_fwd_pe]
         ave_pe = self.df.iloc[:, col_pes].mean(axis=1)
-        filt = (ave_pe == self.df.iloc[:, col_fwd_pe])
+        filt = ave_pe == self.df.iloc[:, col_fwd_pe]
         ttm_pe = self.df.iloc[:, col_fwd_pe - 1]
         fwd_pe = 2 * ave_pe - ttm_pe
         fwd_pe[filt] = ave_pe
@@ -395,10 +390,10 @@ class Watchlist:
         exceptions = remove_duplicates(exceptions)
         if remove_script != []:
             # symbols that didn't pass filter_poor() but are part of dataframe
-            self.script_override = [i for i in index_portfolio
-                                    if i in remove_script]
-            self.warning_symbols = [i for i in self.script_override
-                                    if i not in warning_exceptions]
+            self.script_override = [i for i in index_portfolio if i in remove_script]
+            self.warning_symbols = [
+                i for i in self.script_override if i not in warning_exceptions
+            ]
             # remove symbols if in exceptions list
             remove_edited = [i for i in remove_script if i not in exceptions]
             # remove symbols if not in stock spreadsheet
@@ -419,8 +414,7 @@ class Watchlist:
         # remove symbols that have been qualitatively removed
         entries = [i for i in entries if i not in self.remove_qual]
         # remove symbols that didn't pass filter_poor()
-        remove_script = [i for i in self.remove_script
-                         if i not in self.script_override]
+        remove_script = [i for i in self.remove_script if i not in self.script_override]
         entries = [i for i in entries if i not in remove_script]
         # entries = sorted(entries)
         with open(path_list, 'w') as f:
@@ -681,10 +675,8 @@ class Portfolio(Watchlist):
         self.col_per = np.append(self.col_per, str_)
 
     def update_portfolio_list(self, path_list, sort_column):
-        '''Update portfolio list based on ignore csv portfolio column
-        '''
-        port = self.sort(sort_column, return_dataframe=True,
-                         input_dataframe=self.df)
+        """Update portfolio list based on ignore csv portfolio column"""
+        port = self.sort(sort_column, return_dataframe=True, input_dataframe=self.df)
         list_port = port.index.tolist()
         with open(path_list, 'w') as f:
             f.write(',\n'.join(list_port))
@@ -794,18 +786,16 @@ class Portfolio(Watchlist):
         hist_df[cols[0]] = data_date
         # list of years
         data_year = []
-        [data_year.append(i) for i in data_date.year.tolist()
-         if i not in data_year]
+        [data_year.append(i) for i in data_date.year.tolist() if i not in data_year]
         # list of yearly income
         year_income = []
         for i in data_year:
-            filt = (i == data_date.year)
+            filt = i == data_date.year
             year_income.append(data_income.loc[filt].sum())
         # list of cumulative sum of monthly income
         cumsum_income = data_income.cumsum()
         data_yield = (cumsum_income / data_value) * 1e2
-        fit_cumsum, popt_cumsum, r2_cumsum = fit_data(exp_func, months,
-                                                      cumsum_income)
+        fit_cumsum, popt_cumsum, r2_cumsum = fit_data(exp_func, months, cumsum_income)
         # model monthly income based on curve fit of cumsum_income
         future_month0 = months[-1] + 1
         future_months = np.arange(future_month0, future_month0 + 12)
@@ -953,8 +943,7 @@ if __name__ == '__main__':
     exceptions = []
 
     # start data analysis to filter stocks to a singular watchlist
-    watch = Watchlist(df, percent_columns, dollar_columns,
-                      round_columns, cwd=cwd)
+    watch = Watchlist(df, percent_columns, dollar_columns, round_columns, cwd=cwd)
     watch.yield_(str_yield, str_yield_ave)
     watch.div_rate(str_div_rate)
     watch.ave_div_perf(str_div_perf)
@@ -984,6 +973,5 @@ if __name__ == '__main__':
 
     # print data analysis
     watch.print_terminal(export_columns, str_yield_ave, num_symbol=num_symbol)
-    port.print_summary(m1_export_columns, str_cur_allocate,
-                       num_symbol=num_symbol)
+    port.print_summary(m1_export_columns, str_cur_allocate, num_symbol=num_symbol)
     port.graph_history(path_history)
