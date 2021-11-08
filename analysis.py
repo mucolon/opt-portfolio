@@ -264,28 +264,30 @@ class Watchlist:
 
     def ave_div_perf(self, str_):
         """Add ave div perf data column"""
-        self.str_ave_perf = str_
+        self.str_ave_div_perf = str_
         str_3y_perf = "3Y Perf"
-        str_3y_div_perf = "3Y Div Perf"
+        str_3y_div_perf = "3Y Ave Div Perf"
         str_3y_total = "3Y Total Return"
         str_5y_perf = "5Y Perf"
-        str_5y_div_perf = "5Y Div Perf"
+        str_5y_div_perf = "5Y Ave Div Perf"
         str_5y_total = "5Y Total Return"
         str_10y_perf = "10Y Perf"
-        str_10y_div_perf = "10Y Div Perf"
+        str_10y_div_perf = "10Y Ave Div Perf"
         str_10y_total = "10Y Total Return"
-        col_3y_total = self.df.columns.get_loc(str_3y_total)
-        col_5y_total = self.df.columns.get_loc(str_5y_total)
-        col_10y_total = self.df.columns.get_loc(str_10y_total)
         ave_3y_div_perf = (self.df[str_3y_total] - self.df[str_3y_perf]) / 3
         ave_5y_div_perf = (self.df[str_5y_total] - self.df[str_5y_perf]) / 5
         ave_10y_div_perf = (self.df[str_10y_total] - self.df[str_10y_perf]) / 10
+
+        col_3y_total = self.df.columns.get_loc(str_3y_total)
         self.df.insert(col_3y_total + 1, str_3y_div_perf, ave_3y_div_perf)
+        col_5y_total = self.df.columns.get_loc(str_5y_total)
         self.df.insert(col_5y_total + 1, str_5y_div_perf, ave_5y_div_perf)
+        col_10y_total = self.df.columns.get_loc(str_10y_total)
         self.df.insert(col_10y_total + 1, str_10y_div_perf, ave_10y_div_perf)
+
         col_div_perf = [str_3y_div_perf, str_5y_div_perf, str_10y_div_perf]
-        self.ave_perf = self.df.loc[:, col_div_perf].mean(axis=1)
-        self.df.insert(col_10y_total + 2, str_, self.ave_perf)
+        self._ave_div_perf = self.df.loc[:, col_div_perf].mean(axis=1)
+        self.df.insert(col_10y_total + 2, str_, self._ave_div_perf)
         self.col_per = np.append(self.col_per, col_div_perf)
         self.col_per = np.append(self.col_per, str_)
 
@@ -328,6 +330,34 @@ class Watchlist:
         self.df.insert(col_fwd_pe + 1, str_, fwd_pe)
         self.col_round = np.append(self.col_round, str_)
 
+    def annualized_perf(self, str_):
+        """Add annualized perf data column"""
+        self.str_annual_perf = str_
+        str_1y_perf = "1Y Perf"
+        str_3y_perf = "3Y Perf"
+        str_3y_annual_perf = "3Y Annualized Perf"
+        str_5y_perf = "5Y Perf"
+        str_5y_annual_perf = "5Y Annualized Perf"
+        str_10y_perf = "10Y Perf"
+        str_10y_annual_perf = "10Y Annualized Perf"
+        ave_3y_perf = self.df[str_3y_perf] / 3
+        ave_5y_perf = self.df[str_5y_perf] / 5
+        ave_10y_perf = self.df[str_10y_perf] / 10
+
+        col_3y_perf = self.df.columns.get_loc(str_3y_perf)
+        self.df.insert(col_3y_perf + 3, str_3y_annual_perf, ave_3y_perf)
+        col_5y_perf = self.df.columns.get_loc(str_5y_perf)
+        self.df.insert(col_5y_perf + 3, str_5y_annual_perf, ave_5y_perf)
+        col_10y_perf = self.df.columns.get_loc(str_10y_perf)
+        self.df.insert(col_10y_perf + 3, str_10y_annual_perf, ave_10y_perf)
+
+        col_perf = [str_3y_annual_perf, str_5y_annual_perf, str_10y_annual_perf]
+        _ = [str_1y_perf] + col_perf
+        self.ave_perf = self.df.loc[:, _].mean(axis=1)
+        self.df.insert(col_10y_perf + 5, str_, self.ave_perf)
+        self.col_per = np.append(self.col_per, col_perf)
+        self.col_per = np.append(self.col_per, str_)
+
     def filter_poor(self, str_):
         """Remove symbols based on poor yield, YoC, div growth, payout ratio, 3y, 5y, and 10y performances"""
         str_yoc_year = str_
@@ -345,15 +375,20 @@ class Watchlist:
         str_10y_perf = "10Y Perf"
         str_10y_total = "10Y Total Return"
         str_pe = self.str_pe
+        str_annual_perf = self.str_annual_perf
         str_schd = "SCHD"
         threshold_yoc = self.df.loc[str_schd, str_yoc_year] * 1.1
         threshold_yield = self.df.loc[str_schd, str_yield] * 1.1
+        threshold_perf = self.df.loc[str_schd, str_annual_perf] * 0.9
+        # filter symbols that yield and yoc are poor compared to SCHD
         threshold_filt = (self.df[str_yield] < threshold_yield) & (
             self.df[str_yoc_year] < threshold_yoc
         )
+        # make SCHD not a poor symbol
         threshold_filt[str_schd] = False
         filt = (
             threshold_filt
+            | (self.df[str_annual_perf] < threshold_perf)
             | (self.df[str_pe] < 0)
             | (self.df[str_pe] > 100)
             | (self.df[str_years_growth].str[0] == "0")
@@ -362,15 +397,12 @@ class Watchlist:
             | (pd.isnull(self.df[str_3y_div_growth]))
             | (self.df[str_3y_div_growth] < 0)
             | (self.df[str_5y_div_growth] < 0)
-            |
             # 3y div growth drastic slowdown compared to 5y div growth set by FCPT
-            ((self.df[str_3y_div_growth] / self.df[str_5y_div_growth]) < 0.15)
-            |
+            | ((self.df[str_3y_div_growth] / self.df[str_5y_div_growth]) < 0.15)
             # dividend growth rate filter set by O
-            (self.df[str_div_growth] < 0.034)
-            |
+            | (self.df[str_div_growth] < 0.029)
             # 3y performance filter set by ABBV
-            (self.df[str_3y_perf] < -0.2)
+            | (self.df[str_3y_perf] < -0.2)
             | (self.df[str_3y_total] < -0.03)
             | (self.df[str_5y_perf] < 0)
             | (self.df[str_5y_total] < 0)
@@ -661,13 +693,22 @@ class Portfolio(Watchlist):
             m1_index = m1_df.index.tolist()
             df_index = self.df.index.tolist()
             error_index = [i for i in m1_index if i not in df_index]
-            print("\nUPDATE EXCEPTIONS LIST: ")
+            print("\nUPDATE EXCEPTIONS LIST or IGNORE.CSV PORTFOLIO COLUMN: \n")
             [print(i) for i in error_index]
         self.df = pd.concat([self.df, m1_df], axis=1)
         self.col_per = np.append(self.col_per, percent_columns)
         self.col_dol = np.append(self.col_dol, dollar_columns)
         self.p2f_data()
         self.dollar2f_data()
+
+    def history_import(self, path_csv):
+        """Import history csv file for portfolio analysis"""
+        hist_df = pd.read_csv(path_csv)
+        hist_df.iloc[:, 0] = pd.DatetimeIndex(hist_df.iloc[:, 0])
+        cols = hist_df.columns.tolist()
+        data_income = hist_df[cols[2]]
+        self.port_total_div = data_income.sum()
+        self.hist_df = hist_df
 
     def div_rate(self, str_annual, str_month):
         """Add portfolio annual div rate data column based on shares, calculate total portfolio div rate based on shares"""
@@ -777,6 +818,7 @@ class Portfolio(Watchlist):
         port_perf = f2p(self.port_perf)
         port_month_div = f2dollar(self.port_month_div)
         port_annual_div = f2dollar(self.port_annual_div)
+        port_total_div = f2dollar(self.port_total_div)
         port_yield = f2p(self.port_yield)
         port_yoc = f2p(self.port_yoc)
         port_yield_growth = f2p(self.port_yield_growth)
@@ -795,6 +837,7 @@ class Portfolio(Watchlist):
         print(f"Portfolio Performance:\t\t{port_perf}")
         print(f"Portfolio Monthly Dividends:\t{port_month_div}")
         print(f"Portfolio Annual Dividends:\t{port_annual_div}")
+        print(f"Portfolio Total Dividends:\t{port_total_div}")
         print(f"Portfolio Yield:\t\t{port_yield}")
         print(f"Portfolio YoC:\t\t\t{port_yoc}")
         print(f"Portfolio Yield Growth:\t\t{port_yield_growth}")
@@ -803,9 +846,9 @@ class Portfolio(Watchlist):
         print(f"Add Symbols:\t\t\t{add_qual_ave}")
         print(f"Date/Time:\t\t\t{now}")
 
-    def graph_history(self, path_history):
+    def graph_history(self):
         """Graph portfolio performance on monthly intervals."""
-        hist_df = pd.read_csv(path_history)
+        hist_df = self.hist_df
         cols = hist_df.columns.tolist()
         data_date = pd.DatetimeIndex(hist_df[cols[0]])
         months = hist_df.index.tolist()
@@ -981,6 +1024,7 @@ if __name__ == "__main__":
     str_div_perf = "Ave Div Perf"
     str_div_growth = "Ave Div Grow"
     str_pe = "P/E"
+    str_annual_perf = "Ave Annual Perf"
     str_port = "Port"
     str_month_div = "Monthly Div"
     str_annual_div = "Annual Div"
@@ -994,10 +1038,11 @@ if __name__ == "__main__":
     export_columns = [
         str_yield,
         str_yield_ave,
+        str_annual_perf,
         str_div_perf,
         str_div_growth,
         str_yoc_year,
-        str_pe,
+        # str_pe,
         str_port,
     ]
     m1_export_columns = [
@@ -1007,6 +1052,7 @@ if __name__ == "__main__":
         "Cost Basis",
         str_value,
         "Unrealized Gain %",
+        str_annual_perf,
         str_div_rate,
         str_month_div,
         str_annual_div,
@@ -1017,24 +1063,25 @@ if __name__ == "__main__":
     ]
 
     # pandas options
-    pd.set_option("display.max_columns", len(export_columns))
-    # pd.set_option('display.max_rows', None)
+    pd.set_option("display.max_columns", len(export_columns) - 1)
+    # pd.set_option("display.max_rows", None)
 
     warning_exceptions = [
         "QQQM",
         "ARKK",
         "BLOK",
+        "DIVO",
         "JEPI",
-        "ASML",
         "MSFT",
-        "TSM",
-        "TSLA",
+        "ASML",
         "NVDA",
+        "TSM",
         "AAPL",
+        "TSLA",
     ]
     # warning_exceptions = []
-    # exceptions = ['FCPT', 'STOR', 'O']
-    exceptions = []
+    exceptions = ["O", "CTRE", "VICI", "STOR", "CCI", "FCPT", "NSA"]
+    # exceptions = []
 
     # start data analysis to filter stocks to a singular watchlist
     watch = Watchlist(df, percent_columns, dollar_columns, round_columns, cwd=cwd)
@@ -1042,8 +1089,9 @@ if __name__ == "__main__":
     watch.div_rate(str_div_rate)
     watch.ave_div_perf(str_div_perf)
     watch.ave_div_growth(str_div_growth)
-    watch.yoc_years(years, str_yield)  # str_yield_ave
+    watch.yoc_years(years, str_yield)
     watch.pe_ratio(str_pe)
+    watch.annualized_perf(str_annual_perf)
     watch.filter_poor(str_yoc_year)
     watch.sort(str_yield)
     watch.update_ignore_list(
@@ -1056,6 +1104,7 @@ if __name__ == "__main__":
     # start data analysis to highlight portfolio performance
     port = Portfolio(watch)
     port.m1_import(path_m1, percent_columns_m1, dollar_columns_m1)
+    port.history_import(path_history)
     port.div_rate(str_annual_div, str_month_div)
     port.current_allocation(str_cur_allocate)
     port.yoc(str_yoc)
@@ -1067,6 +1116,6 @@ if __name__ == "__main__":
     port.export_csv("personal/portfolio", m1_export_columns, str_cur_allocate)
 
     # print data analysis
-    watch.print_terminal(export_columns, str_yield_ave, num_symbol=num_symbol)
+    watch.print_terminal(export_columns, str_yield, num_symbol=num_symbol)
     port.print_summary(m1_export_columns, str_cur_allocate, num_symbol=num_symbol)
-    port.graph_history(path_history)
+    port.graph_history()
