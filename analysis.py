@@ -293,7 +293,7 @@ class Watchlist:
 
     def ave_div_growth(self, str_):
         """Add ave div growth data column"""
-        self.str_div_growth = str_
+        self.str_div_growth = str_  # "Ave Div Grow"
         col_5y_growth = self.df.columns.get_loc("Div Growth 5Y")
         col_growth = [col_5y_growth - 1, col_5y_growth]
         str_columns = self.df.columns.tolist()
@@ -365,7 +365,7 @@ class Watchlist:
         str_yield = self.str_yield
         str_years_growth = "Years of Growth"
         str_payout = "Payout Ratio"
-        str_div_growth = self.str_div_growth
+        str_div_growth = self.str_div_growth  # "Ave Div Grow"
         str_3y_div_growth = "Div Growth 3Y"
         str_5y_div_growth = "Div Growth 5Y"
         str_3y_perf = "3Y Perf"
@@ -377,12 +377,17 @@ class Watchlist:
         str_pe = self.str_pe
         str_annual_perf = self.str_annual_perf
         str_schd = "SCHD"
-        threshold_yoc = self.df.loc[str_schd, str_yoc_year] * 1.1
+        # threshold_yoc = self.df.loc[str_schd, str_yoc_year] * 0.9
         threshold_yield = self.df.loc[str_schd, str_yield] * 1.1
-        threshold_perf = self.df.loc[str_schd, str_annual_perf] * 0.9
+        threshold_div_growth = self.df.loc[str_schd, str_div_growth] * 1.045
+        threshold_perf = self.df.loc[str_schd, str_annual_perf]
         # filter symbols that yield and yoc are poor compared to SCHD
+        # threshold_filt = (self.df[str_yield] < threshold_yield) & (
+        #     self.df[str_yoc_year] < threshold_yoc
+        # )
+        # filter symbols that yield and div growth are poor compared to SCHD
         threshold_filt = (self.df[str_yield] < threshold_yield) & (
-            self.df[str_yoc_year] < threshold_yoc
+            self.df[str_div_growth] < threshold_div_growth
         )
         # make SCHD not a poor symbol
         threshold_filt[str_schd] = False
@@ -424,6 +429,8 @@ class Watchlist:
         ignore_df = pd.read_csv(path_ignore)
         col_index_portfolio = ignore_df.columns.get_loc("Portfolio")
         index_portfolio = ignore_df["Portfolio"].dropna().tolist()
+        exceptions = exceptions + index_portfolio
+        exceptions = remove_duplicates(exceptions)
         cols_ignore = ignore_df.columns.values.tolist()
         col_script = cols_ignore[0]
         cols_qual = cols_ignore[1:col_index_portfolio]
@@ -445,7 +452,7 @@ class Watchlist:
         entries = self.df.index.tolist()
         # compile list of symbols that should be removed from entries b/c of poor qual details
         remove_qual_poor = [i for i in qual_poor if i in entries]
-        remove_qual_poor = [i for i in remove_qual_poor if i not in exceptions]
+        # remove_qual_poor = [i for i in remove_qual_poor if i not in exceptions]
         self.remove_qual_poor = sorted(remove_qual_poor)
         # compile list of symbols that should be added to entries b/c of ave qual details
         add_qual_ave = [i for i in qual_ave if i not in entries]
@@ -456,8 +463,6 @@ class Watchlist:
         remove_qual = [i for i in remove_qual if i not in exceptions]
         self.df.drop(remove_qual, inplace=True)
         entries = self.df.index.tolist()
-        exceptions = exceptions + index_portfolio
-        exceptions = remove_duplicates(exceptions)
         if remove_script != []:
             # symbols that didn't pass filter_poor() but are part of dataframe
             self.script_override = [i for i in index_portfolio if i in remove_script]
@@ -628,7 +633,7 @@ class Watchlist:
         self.sort(sort_column, ascending=ascending)
         df = self.cleanup_data(return_dataframe=True)
         print(df.loc[:, columns])
-        print(f"Index Length: {len(df.index)}")
+        # print(f"Index Length: {len(df.index)}")
 
     def export_csv(self, file_name, columns, sort_column, ascending=False):
         """Export specificed dataframe columns to a csv"""
@@ -1009,7 +1014,7 @@ if __name__ == "__main__":
     round_columns = round_columns_value
 
     # import data from excel file
-    sheet_names = ["Performance", "Dividends", "Value", "Growth"]
+    sheet_names = ["Performance", "Dividends", "Valuation", "Growth"]
     columns_drop = ["Yield"]
     # columns_drop = []
     with warnings.catch_warnings():
@@ -1032,17 +1037,17 @@ if __name__ == "__main__":
     str_yoc = "YoC"
     str_yield_growth = "Div Grow"
     str_value = "Value"
-    years = [5, 10, 15, 20]
-    yoc_year = years[-2]
+    years = [5, 10, 15, 20, 25]
+    yoc_year = years[1]
     str_yoc_year = str(yoc_year) + "Y YoC"
     export_columns = [
         str_yield,
         str_yield_ave,
         str_annual_perf,
         str_div_perf,
+        str_pe,
         str_div_growth,
         str_yoc_year,
-        # str_pe,
         str_port,
     ]
     m1_export_columns = [
@@ -1063,7 +1068,7 @@ if __name__ == "__main__":
     ]
 
     # pandas options
-    pd.set_option("display.max_columns", len(export_columns) - 1)
+    pd.set_option("display.max_columns", len(export_columns) - 2)
     # pd.set_option("display.max_rows", None)
 
     warning_exceptions = [
@@ -1078,10 +1083,11 @@ if __name__ == "__main__":
         "TSM",
         "AAPL",
         "TSLA",
+        "NFLX",
     ]
     # warning_exceptions = []
-    exceptions = ["O", "CTRE", "VICI", "STOR", "CCI", "FCPT", "NSA"]
-    # exceptions = []
+    # exceptions = ["AMAT", "EXPO"]
+    exceptions = []
 
     # start data analysis to filter stocks to a singular watchlist
     watch = Watchlist(df, percent_columns, dollar_columns, round_columns, cwd=cwd)
@@ -1100,6 +1106,7 @@ if __name__ == "__main__":
     watch.update_watchlist(path_list)
     watch.portfolio_mark(str_port)
     watch.export_csv("data/watchlist", export_columns, str_yield)
+    # watch.export_csv("data/watchlist", export_columns, str_div_growth)
 
     # start data analysis to highlight portfolio performance
     port = Portfolio(watch)
@@ -1116,6 +1123,7 @@ if __name__ == "__main__":
     port.export_csv("personal/portfolio", m1_export_columns, str_cur_allocate)
 
     # print data analysis
-    watch.print_terminal(export_columns, str_yield, num_symbol=num_symbol)
+    # watch.print_terminal(export_columns, str_yield, num_symbol=num_symbol)
+    watch.print_terminal(export_columns, str_div_growth, num_symbol=num_symbol)
     port.print_summary(m1_export_columns, str_cur_allocate, num_symbol=num_symbol)
     port.graph_history()
