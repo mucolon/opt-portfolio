@@ -45,6 +45,12 @@ def f2dollar(float_, drop_cents=False):
     return dollar
 
 
+def remove_parentheses(str_):
+    """Remove parentheses from first & last index of str_ input"""
+    remove_ = "()"
+    return str_.translate({ord(i): None for i in remove_})
+
+
 def insert_position(position, list1, list2):
     """Insert list2 into position of list1"""
     return list1[:position] + list2 + list1[position:]
@@ -380,14 +386,16 @@ class Watchlist:
         # threshold_yoc = self.df.loc[str_schd, str_yoc_year] * 0.9
         threshold_yield = self.df.loc[str_schd, str_yield] * 1.1
         threshold_div_growth = self.df.loc[str_schd, str_div_growth] * 1.045
-        threshold_perf = self.df.loc[str_schd, str_annual_perf]
+        threshold_perf = self.df.loc[str_schd, str_annual_perf] * 1.25
         # filter symbols that yield and yoc are poor compared to SCHD
         # threshold_filt = (self.df[str_yield] < threshold_yield) & (
         #     self.df[str_yoc_year] < threshold_yoc
         # )
         # filter symbols that yield and div growth are poor compared to SCHD
-        threshold_filt = (self.df[str_yield] < threshold_yield) & (
-            self.df[str_div_growth] < threshold_div_growth
+        threshold_filt = (
+            (self.df[str_yield] < threshold_yield)
+            & (self.df[str_div_growth] < threshold_div_growth)
+            # & (self.df[str_annual_perf] < (threshold_perf * 1.25))
         )
         # make SCHD not a poor symbol
         threshold_filt[str_schd] = False
@@ -414,6 +422,8 @@ class Watchlist:
             | (self.df[str_10y_perf] < 0)
             | (self.df[str_10y_total] < 0)
         )
+        # make SCHD not a poor symbol
+        filt[str_schd] = False
         remove_script = self.df.loc[filt].index.values.tolist()
         self.remove_script = remove_script
 
@@ -692,6 +702,10 @@ class Portfolio(Watchlist):
         m1_df.set_index("Ticker", inplace=True)
         m1_df = m1_df.rename_axis(None)
         m1_df.rename(columns={"Avg. Price": "Ave Price"}, inplace=True)
+        for i in percent_columns:
+            filt = m1_df.loc[:, i].str.contains(r"\(")
+            edit = m1_df.loc[filt, i].apply(remove_parentheses)
+            m1_df.loc[:, i] = edit
         try:
             self.df = self.df.loc[m1_df.index.tolist(), :]
         except KeyError:
@@ -1086,7 +1100,7 @@ if __name__ == "__main__":
         "NFLX",
     ]
     # warning_exceptions = []
-    # exceptions = ["AMAT", "EXPO"]
+    # exceptions = ["AMAT", "EXPO", "LRCX", "CDW", "NXPI", "POOL"]
     exceptions = []
 
     # start data analysis to filter stocks to a singular watchlist
@@ -1095,7 +1109,7 @@ if __name__ == "__main__":
     watch.div_rate(str_div_rate)
     watch.ave_div_perf(str_div_perf)
     watch.ave_div_growth(str_div_growth)
-    watch.yoc_years(years, str_yield)
+    watch.yoc_years(years, str_yield_ave)
     watch.pe_ratio(str_pe)
     watch.annualized_perf(str_annual_perf)
     watch.filter_poor(str_yoc_year)
@@ -1105,8 +1119,6 @@ if __name__ == "__main__":
     )
     watch.update_watchlist(path_list)
     watch.portfolio_mark(str_port)
-    watch.export_csv("data/watchlist", export_columns, str_yield)
-    # watch.export_csv("data/watchlist", export_columns, str_div_growth)
 
     # start data analysis to highlight portfolio performance
     port = Portfolio(watch)
@@ -1120,6 +1132,10 @@ if __name__ == "__main__":
     port.calculate_summary()
     # port.optimize(import_data=False)
     # port.optimize()
+
+    # export data analysis
+    # watch.export_csv("data/watchlist", export_columns, str_yield_ave)
+    watch.export_csv("data/watchlist", export_columns, str_div_growth)
     port.export_csv("personal/portfolio", m1_export_columns, str_cur_allocate)
 
     # print data analysis
