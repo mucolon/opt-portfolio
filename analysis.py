@@ -1,4 +1,4 @@
-#!/usr/local/bin/python3
+#!./.venv/bin/python
 
 # Setup code
 import os
@@ -49,6 +49,12 @@ def remove_parentheses(str_):
     """Remove parentheses from first & last index of str_ input"""
     remove_ = "()"
     return str_.translate({ord(i): None for i in remove_})
+
+
+def strCommaNum2f(strNum):
+    """Convert string comma number to a float number"""
+    remove_ = ","
+    return float(strNum.translate({ord(i): None for i in remove_}))
 
 
 def insert_position(position, list1, list2):
@@ -223,7 +229,7 @@ def fit_data(func, xdata, ydata, return_r_squared=False):
 
 
 class Watchlist:
-    """Class filters Stocks.xlsx to a watchlist dataframe that passes the filter_poor() method"""
+    """Class filters Watchlist.xlsx to a watchlist dataframe that passes the filter_poor() method"""
 
     def __init__(
         self, dataframe, percent_columns, dollar_columns, round_columns, cwd=None
@@ -638,7 +644,7 @@ class Watchlist:
             self.round_data()
 
     def print_terminal(self, columns, sort_column, ascending=False, num_symbol=16):
-        """Print specificed dataframe columns onto terminal"""
+        """Print specified dataframe columns onto terminal"""
         print_divider(num_symbol)
         self.sort(sort_column, ascending=ascending)
         df = self.cleanup_data(return_dataframe=True)
@@ -646,7 +652,7 @@ class Watchlist:
         # print(f"Index Length: {len(df.index)}")
 
     def export_csv(self, file_name, columns, sort_column, ascending=False):
-        """Export specificed dataframe columns to a csv"""
+        """Export specified dataframe columns to a csv"""
         self.sort(sort_column, ascending=ascending)
         df = self.cleanup_data(return_dataframe=True)
         export_path = f"{self.cwd}/{file_name}.csv"
@@ -696,16 +702,22 @@ class Portfolio(Watchlist):
         self.col_round = watch.col_round
         self.cwd = watch.cwd
 
-    def m1_import(self, path_csv, percent_columns, dollar_columns):
+    def m1_import(
+        self, path_csv, comma_columns, percent_columns=None, dollar_columns=None
+    ):
         """Import M1 csv file for portfolio analysis"""
         m1_df = pd.read_csv(path_csv)
-        m1_df.set_index("Ticker", inplace=True)
+        m1_df.set_index("Symbol", inplace=True)
         m1_df = m1_df.rename_axis(None)
         m1_df.rename(columns={"Avg. Price": "Ave Price"}, inplace=True)
-        for i in percent_columns:
-            filt = m1_df.loc[:, i].str.contains(r"\(")
-            edit = m1_df.loc[filt, i].apply(remove_parentheses)
+        for i in comma_columns:
+            filt = m1_df.loc[:, i].str.contains(",")
+            edit = m1_df.loc[filt, i].apply(strCommaNum2f)
             m1_df.loc[:, i] = edit
+        # for i in percent_columns:
+        #     filt = m1_df.loc[:, i].str.contains(r"\(")
+        #     edit = m1_df.loc[filt, i].apply(remove_parentheses)
+        #     m1_df.loc[:, i] = edit
         try:
             self.df = self.df.loc[m1_df.index.tolist(), :]
         except KeyError:
@@ -715,8 +727,10 @@ class Portfolio(Watchlist):
             print("\nUPDATE EXCEPTIONS LIST or IGNORE.CSV PORTFOLIO COLUMN: \n")
             [print(i) for i in error_index]
         self.df = pd.concat([self.df, m1_df], axis=1)
-        self.col_per = np.append(self.col_per, percent_columns)
-        self.col_dol = np.append(self.col_dol, dollar_columns)
+        if percent_columns is not None:
+            self.col_per = np.append(self.col_per, percent_columns)
+        if dollar_columns is not None:
+            self.col_dol = np.append(self.col_dol, dollar_columns)
         self.p2f_data()
         self.dollar2f_data()
 
@@ -831,7 +845,7 @@ class Portfolio(Watchlist):
         ef.portfolio_performance(verbose=True)
 
     def print_summary(self, columns, sort_column, ascending=False, num_symbol=16):
-        """Print specificed dataframe columns and portfolio summary onto terminal"""
+        """Print specified dataframe columns and portfolio summary onto terminal"""
         port_value = f2dollar(self.port_value)
         port_cost = f2dollar(self.port_cost)
         port_perf = f2p(self.port_perf)
@@ -843,7 +857,7 @@ class Portfolio(Watchlist):
         port_yield_growth = f2p(self.port_yield_growth)
         warning_symbols = str(", ".join(self.warning_symbols))
         remove_qual_poor = str(", ".join(self.remove_qual_poor))
-        add_qual_ave = str(", ".join(self.add_qual_ave))
+        # add_qual_ave = str(", ".join(self.add_qual_ave))
         print_divider(num_symbol)
         self.sort(sort_column, ascending=ascending)
         df = self.cleanup_data(return_dataframe=True)
@@ -862,7 +876,7 @@ class Portfolio(Watchlist):
         print(f"Portfolio Yield Growth:\t\t{port_yield_growth}")
         print(f"Warning Symbols:\t\t{warning_symbols}")
         print(f"Remove Symbols:\t\t\t{remove_qual_poor}")
-        print(f"Add Symbols:\t\t\t{add_qual_ave}")
+        # print(f"Add Symbols:\t\t\t{add_qual_ave}")
         print(f"Date/Time:\t\t\t{now}")
 
     def graph_history(self):
@@ -887,14 +901,15 @@ class Portfolio(Watchlist):
         data_yield = (cumsum_income / data_value) * 1e2
         fit_cumsum, popt_cumsum, r2_cumsum = fit_data(exp_func, months, cumsum_income)
         # model monthly income based on curve fit of cumsum_income
+        months_forward = 11
         future_month0 = months[-1] + 1
-        future_months = np.arange(future_month0, future_month0 + 12)
+        future_months = np.arange(future_month0, future_month0 + months_forward)
         future_months = np.concatenate([months, future_months])
         future_income = exp_func(future_months, *popt_cumsum)
         for i in range(future_months[-1], 0, -1):
             future_income[i] = future_income[i] - future_income[i - 1]
-        future_date = data_date + pd.DateOffset(months=12)
-        future_date = future_date[-12:]
+        future_date = data_date + pd.DateOffset(months=months_forward)
+        future_date = future_date[-1 * months_forward :]
         future_date = data_date.union(future_date)
         # curve fit monthly income
         fit_income, popt_income = fit_data(
@@ -925,7 +940,7 @@ class Portfolio(Watchlist):
         ax2.plot(data_date, cumsum_income, ".-", label="Cumulative")
         ax2.plot(data_date, fit_cumsum, "C2", label="Cumulative Fit")
         ax2.plot(data_date, data_income, ".-C4", label="Monthly")
-        ax2.plot(future_date, fit_income, ".-C2", label="Forcast")
+        ax2.plot(future_date, fit_income, ".-C2", label="Forecast")
         # cumulative dividend fit eqn
         # add an addition symbol to the intercept/nought constant is not negative
         if popt_cumsum[2] > 0:
@@ -988,13 +1003,14 @@ if __name__ == "__main__":
     path_ignore = f"{cwd}/data/ignore.csv"
     path_list = f"{cwd}/data/watchlist.txt"
     path_portfolio = f"{cwd}/data/portfolio.txt"
-    path_excel = f"{cwd}/data/Stocks.xlsx"
-    path_m1 = f"{cwd}/personal/m1.csv"
+    path_excel = f"{cwd}/data/Watchlist.xlsx"
+    path_holdings = f"{cwd}/personal/Holdings.csv"
     path_history = f"{cwd}/personal/history.csv"
 
     # system commands
-    os.system(f"mv -f ~/Downloads/Stocks.xlsx {path_excel} 2>/dev/null")
-    os.system(f"mv -f ~/Downloads/m1.csv {path_m1} 2>/dev/null")
+    # os.system(f"mv -f ~/Downloads/Stocks.xlsx {path_excel} 2>/dev/null")
+    os.system(f"mv -f ~/Downloads/Watchlist.xlsx {path_excel} 2>/dev/null")
+    os.system(f"mv -f ~/Downloads/Holdings.csv {path_holdings} 2>/dev/null")
 
     # data constants
     percent_columns_perf = [
@@ -1019,9 +1035,15 @@ if __name__ == "__main__":
         "Div Growth 3Y",
         "Div Growth 5Y",
     ]
-    percent_columns_m1 = ["Unrealized Gain %"]
+    percent_columns_holdings = ["Unrealized Gain (%)"]
     dollar_columns_div = ["Div Rate TTM", "Div Rate FWD"]
-    dollar_columns_m1 = ["Ave Price", "Cost Basis", "Unrealized Gain", "Value"]
+    dollar_columns_holdings = [
+        "Ave Price",
+        "Cost Basis",
+        "Unrealized Gain ($)",
+        "Value",
+    ]
+    comma_columns_holdings = ["Cost Basis", "Value"]
     round_columns_value = ["P/E TTM", "P/E FWD"]
     percent_columns = percent_columns_perf + percent_columns_div
     dollar_columns = dollar_columns_div
@@ -1059,10 +1081,10 @@ if __name__ == "__main__":
         str_yield_ave,
         str_annual_perf,
         str_div_perf,
-        str_pe,
+        # str_pe,
         str_div_growth,
         str_yoc_year,
-        str_port,
+        # str_port,
     ]
     m1_export_columns = [
         str_cur_allocate,
@@ -1070,7 +1092,7 @@ if __name__ == "__main__":
         "Ave Price",
         "Cost Basis",
         str_value,
-        "Unrealized Gain %",
+        "Unrealized Gain (%)",
         str_annual_perf,
         str_div_rate,
         str_month_div,
@@ -1082,25 +1104,16 @@ if __name__ == "__main__":
     ]
 
     # pandas options
-    pd.set_option("display.max_columns", len(export_columns) - 2)
+    pd.set_option("display.max_columns", len(export_columns))
     # pd.set_option("display.max_rows", None)
 
     warning_exceptions = [
-        "QQQM",
-        "ARKK",
-        "BLOK",
+        "SOXX",
+        "IXN",
         "DIVO",
         "JEPI",
-        "MSFT",
-        "ASML",
-        "NVDA",
-        "TSM",
-        "AAPL",
-        "TSLA",
-        "NFLX",
     ]
     # warning_exceptions = []
-    # exceptions = ["AMAT", "EXPO", "LRCX", "CDW", "NXPI", "POOL"]
     exceptions = []
 
     # start data analysis to filter stocks to a singular watchlist
@@ -1122,7 +1135,9 @@ if __name__ == "__main__":
 
     # start data analysis to highlight portfolio performance
     port = Portfolio(watch)
-    port.m1_import(path_m1, percent_columns_m1, dollar_columns_m1)
+    port.m1_import(
+        path_holdings, comma_columns_holdings
+    )  # , percent_columns_holdings, dollar_columns_holdings)
     port.history_import(path_history)
     port.div_rate(str_annual_div, str_month_div)
     port.current_allocation(str_cur_allocate)
@@ -1134,12 +1149,12 @@ if __name__ == "__main__":
     # port.optimize()
 
     # export data analysis
-    # watch.export_csv("data/watchlist", export_columns, str_yield_ave)
-    watch.export_csv("data/watchlist", export_columns, str_div_growth)
+    watch.export_csv("data/watchlist", export_columns, str_yield)
+    # watch.export_csv("data/watchlist", export_columns, str_div_growth)
     port.export_csv("personal/portfolio", m1_export_columns, str_cur_allocate)
 
     # print data analysis
-    # watch.print_terminal(export_columns, str_yield, num_symbol=num_symbol)
-    watch.print_terminal(export_columns, str_div_growth, num_symbol=num_symbol)
+    watch.print_terminal(export_columns, str_yield, num_symbol=num_symbol)
+    # watch.print_terminal(export_columns, str_div_growth, num_symbol=num_symbol)
     port.print_summary(m1_export_columns, str_cur_allocate, num_symbol=num_symbol)
     port.graph_history()
